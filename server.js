@@ -21,10 +21,12 @@ const state = {
   matches: [],
   scores: [],
   judges: [],
+  rooms: [],
   nextSchoolId: 1,
   nextTeamId: 1,
   nextMatchId: 1,
-  nextJudgeId: 1
+  nextJudgeId: 1,
+  nextRoomId: 1
 };
 
 function getTeams() {
@@ -108,7 +110,8 @@ app.get("/admin", (req, res) => {
     schools: state.schools,
     teams,
     matches: state.matches.map((m) => matchView(m, teamsById)),
-    judges: state.judges
+    judges: state.judges,
+    rooms: state.rooms
   });
 });
 
@@ -158,6 +161,60 @@ app.post("/admin/team", (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/team/delete", (req, res) => {
+  const teamId = Number(req.body.teamId);
+  if (!teamId) {
+    res.redirect("/admin");
+    return;
+  }
+
+  state.schools = state.schools.map((school) => ({
+    ...school,
+    teams: school.teams.filter((team) => team.id !== teamId)
+  }));
+
+  const removedMatchIds = new Set();
+  state.matches = state.matches.filter((match) => {
+    const removed =
+      match.prosecutionTeamId === teamId || match.defenseTeamId === teamId;
+    if (removed) {
+      removedMatchIds.add(match.id);
+    }
+    return !removed;
+  });
+
+  if (removedMatchIds.size > 0) {
+    state.scores = state.scores.filter((score) => !removedMatchIds.has(score.matchId));
+  }
+
+  broadcast("schools", state.schools);
+  broadcast("matches", state.matches);
+  if (removedMatchIds.size > 0) {
+    broadcast("scores_reset", []);
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/room", (req, res) => {
+  const { roomNumber } = req.body;
+  const value = (roomNumber || "").trim();
+  if (value) {
+    state.rooms.push({
+      id: state.nextRoomId++,
+      label: value
+    });
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/room/delete", (req, res) => {
+  const roomId = Number(req.body.roomId);
+  if (roomId) {
+    state.rooms = state.rooms.filter((room) => room.id !== roomId);
+  }
+  res.redirect("/admin");
+});
+
 app.post("/admin/judge", (req, res) => {
   const { judgeName } = req.body;
   const name = (judgeName || "").trim();
@@ -169,6 +226,14 @@ app.post("/admin/judge", (req, res) => {
       name,
       pin
     });
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/judge/delete", (req, res) => {
+  const judgeId = Number(req.body.judgeId);
+  if (judgeId) {
+    state.judges = state.judges.filter((judge) => judge.id !== judgeId);
   }
   res.redirect("/admin");
 });
@@ -185,17 +250,25 @@ app.post("/admin/start", (req, res) => {
 
   state.matches = [];
   state.scores = [];
-  let courtNumber = 1;
+  const rooms = [...state.rooms];
+  if (rooms.length) {
+    shuffle(rooms);
+  }
+  let roomIndex = 0;
   for (let i = 0; i < teamIds.length; i += 2) {
     const prosecutionTeamId = teamIds[i];
     const defenseTeamId = teamIds[i + 1] || null;
+    const room =
+      rooms.length > 0
+        ? rooms[roomIndex % rooms.length].label
+        : String(Math.floor(i / 2) + 1);
+    roomIndex += 1;
     state.matches.push({
       id: state.nextMatchId++,
-      courtroom: `${courtNumber}`,
+      courtroom: room,
       prosecutionTeamId,
       defenseTeamId
     });
-    courtNumber += 1;
   }
 
   broadcast("matches", state.matches);

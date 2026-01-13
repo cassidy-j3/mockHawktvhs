@@ -22,7 +22,7 @@
             <ul class="match-list">
               <% matches.forEach((m) => { %>
                 <li class="match-item">
-                  <strong>Courtroom <%= m.courtroom || "TBD" %></strong>:
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
                   <span><%= m.prosecutionLabel %></span>
                   vs
                   <span><%= m.defenseLabel %></span>
@@ -42,7 +42,7 @@
             <ul class="scores">
               <% scores.forEach((s) => { %>
                 <% const match = matches.find((m) => m.id === s.matchId); %>
-                <% const matchLabel = match ? `Courtroom ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
                 <li>
                   <strong><%= s.judgeName || "Judge" %></strong> - <%= matchLabel %>
                   <span><%= s.side %> - <%= s.score %></span>

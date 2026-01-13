@@ -1,14 +1,14 @@
 ﻿@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Rubik:wght@500;600;700&display=swap");
 
 :root {
-  --dry-sage: #ccd5ae;
-  --beige: #e9edc9;
-  --cornsilk: #fefae0;
-  --papaya-whip: #faedcd;
-  --light-bronze: #d4a373;
-  --ink: #3a2f24;
-  --card: #fefae0;
-  --line: #d4c8b2;
+  --dry-sage: #acbcf1;
+  --beige: #e0e2e9;
+  --cornsilk: #acbcf1;
+  --papaya-whip: #e0e2e9;
+  --light-bronze: #657ed4;
+  --ink: #3e517a;
+  --card: #e0e2e9;
+  --line: #657ed4;
 }
 
 * {
@@ -18,7 +18,7 @@
 body {
   margin: 0;
   font-family: "Poppins", "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, var(--cornsilk), var(--beige));
+  background: radial-gradient(circle at top, var(--beige), var(--cornsilk));
   color: var(--ink);
 }
 
@@ -71,7 +71,7 @@ h3,
 
 .card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(94, 72, 38, 0.18);
+  box-shadow: 0 12px 30px rgba(62, 81, 122, 0.2);
 }
 
 .page-header {
@@ -84,12 +84,13 @@ h3,
 
 .admin-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: minmax(220px, 280px) minmax(240px, 300px) 1fr;
   gap: 24px;
   align-items: start;
 }
 
-.admin-sidebar .panel {
+.admin-left .panel,
+.admin-middle .panel {
   margin-bottom: 16px;
 }
 
@@ -135,7 +136,7 @@ textarea {
 
 button {
   background: var(--light-bronze);
-  color: #fffaf2;
+  color: #e0e2e9;
   padding: 10px 18px;
   border: none;
   border-radius: 10px;
@@ -144,7 +145,7 @@ button {
 }
 
 button:hover {
-  background: #b9885f;
+  background: #3e517a;
 }
 
 .match-display p {
@@ -194,6 +195,31 @@ button:hover {
   margin: 4px 0;
 }
 
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-row form {
+  margin: 0;
+}
+
+.delete-button {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.delete-button:hover {
+  background: var(--light-bronze);
+  color: #e0e2e9;
+}
+
 .team-add-form {
   margin-top: 10px;
 }
@@ -235,21 +261,32 @@ button:hover {
   border-bottom: 1px solid var(--line);
 }
 
+.room-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.room-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
 .confirm-message {
   margin: 8px 0 0;
-  color: #6a5240;
+  color: #3e517a;
   font-size: 0.9rem;
 }
 
 .note {
   display: block;
   font-size: 0.9rem;
-  color: #6a5240;
+  color: #3e517a;
   margin-top: 4px;
 }
 
 .empty {
-  color: #6a5240;
+  color: #3e517a;
 }
 
 @media (max-width: 700px) {

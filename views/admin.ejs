@@ -14,7 +14,44 @@
       </header>
 
       <div class="admin-layout">
-        <aside class="admin-sidebar">
+        <aside class="admin-left">
+          <section class="panel">
+            <h2>Rooms</h2>
+            <form class="inline-form" method="post" action="/admin/room">
+              <input name="roomNumber" placeholder="Room number" aria-label="Room number" required />
+              <button type="submit">Add</button>
+            </form>
+            <% if (rooms.length === 0) { %>
+              <p class="empty">No rooms added yet.</p>
+            <% } else { %>
+              <ul class="room-list">
+                <% rooms.forEach((r) => { %>
+                  <li class="list-row">
+                    <span><%= r.label %></span>
+                    <form method="post" action="/admin/room/delete">
+                      <input type="hidden" name="roomId" value="<%= r.id %>" />
+                      <button type="submit" class="delete-button">Delete</button>
+                    </form>
+                  </li>
+                <% }) %>
+              </ul>
+            <% } %>
+          </section>
+
+          <section class="panel">
+            <h2>Competition</h2>
+            <% if (teams.length < 2) { %>
+              <p class="empty">Add at least two teams to start.</p>
+            <% } else { %>
+              <form id="startCompetitionForm" method="post" action="/admin/start">
+                <button id="startCompetitionButton" type="submit">Start Competition</button>
+                <p id="startCompetitionMessage" class="confirm-message"></p>
+              </form>
+            <% } %>
+          </section>
+        </aside>
+
+        <aside class="admin-middle">
           <form class="panel" method="post" action="/admin/school">
             <h2>Add School</h2>
             <label>
@@ -35,24 +72,17 @@
             <% } else { %>
               <ul class="judge-list">
                 <% judges.forEach((j) => { %>
-                  <li><strong><%= j.name %></strong> - <%= j.pin %></li>
+                  <li class="list-row">
+                    <span><strong><%= j.name %></strong> - <%= j.pin %></span>
+                    <form method="post" action="/admin/judge/delete">
+                      <input type="hidden" name="judgeId" value="<%= j.id %>" />
+                      <button type="submit" class="delete-button">Delete</button>
+                    </form>
+                  </li>
                 <% }) %>
               </ul>
             <% } %>
           </section>
-
-          <section class="panel">
-            <h2>Competition</h2>
-            <% if (teams.length < 2) { %>
-              <p class="empty">Add at least two teams to start.</p>
-            <% } else { %>
-              <form id="startCompetitionForm" method="post" action="/admin/start">
-                <button id="startCompetitionButton" type="submit">Start Competition</button>
-                <p id="startCompetitionMessage" class="confirm-message"></p>
-              </form>
-            <% } %>
-          </section>
-
         </aside>
 
         <section class="panel admin-main">
@@ -69,7 +99,13 @@
                   <% } else { %>
                     <ul class="team-list">
                       <% s.teams.forEach((t) => { %>
-                        <li><%= t.name %> (<%= t.code %>)</li>
+                        <li class="list-row">
+                          <span><%= t.name %> (<%= t.code %>)</span>
+                          <form method="post" action="/admin/team/delete">
+                            <input type="hidden" name="teamId" value="<%= t.id %>" />
+                            <button type="submit" class="delete-button">Delete</button>
+                          </form>
+                        </li>
                       <% }) %>
                     </ul>
                   <% } %>
