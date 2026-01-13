@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - Mock Trial Hub</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <h1>Admin</h1>
+        <a class="back" href="/">Back</a>
+      </header>
+
+      <div class="admin-layout">
+        <aside class="admin-sidebar">
+          <form class="panel" method="post" action="/admin/school">
+            <h2>Add School</h2>
+            <label>
+              School name
+              <input name="schoolName" required />
+            </label>
+            <button type="submit">Add School</button>
+          </form>
+
+          <section class="panel">
+            <h2>Judges</h2>
+            <form class="inline-form" method="post" action="/admin/judge">
+              <input name="judgeName" placeholder="Judge name" aria-label="Judge name" required />
+              <button type="submit">Create Pin</button>
+            </form>
+            <% if (judges.length === 0) { %>
+              <p class="empty">No judges added yet.</p>
+            <% } else { %>
+              <ul class="judge-list">
+                <% judges.forEach((j) => { %>
+                  <li><strong><%= j.name %></strong> - <%= j.pin %></li>
+                <% }) %>
+              </ul>
+            <% } %>
+          </section>
+
+          <section class="panel">
+            <h2>Competition</h2>
+            <% if (teams.length < 2) { %>
+              <p class="empty">Add at least two teams to start.</p>
+            <% } else { %>
+              <form id="startCompetitionForm" method="post" action="/admin/start">
+                <button id="startCompetitionButton" type="submit">Start Competition</button>
+                <p id="startCompetitionMessage" class="confirm-message"></p>
+              </form>
+            <% } %>
+          </section>
+
+        </aside>
+
+        <section class="panel admin-main">
+          <h2>Schools & Teams</h2>
+          <% if (schools.length === 0) { %>
+            <p class="empty">No schools added yet.</p>
+          <% } else { %>
+            <ul class="school-list">
+              <% schools.forEach((s) => { %>
+                <li class="school-item">
+                  <strong><%= s.name %></strong>
+                  <% if (s.teams.length === 0) { %>
+                    <p class="empty">No teams yet.</p>
+                  <% } else { %>
+                    <ul class="team-list">
+                      <% s.teams.forEach((t) => { %>
+                        <li><%= t.name %> (<%= t.code %>)</li>
+                      <% }) %>
+                    </ul>
+                  <% } %>
+                  <form class="team-add-form" method="post" action="/admin/team">
+                    <input type="hidden" name="schoolId" value="<%= s.id %>" />
+                    <div class="team-add-row">
+                      <input name="teamName" placeholder="Add team" required />
+                      <button type="submit" class="icon-button" aria-label="Add team">+</button>
+                    </div>
+                  </form>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </section>
+      </div>
+    </main>
+    <script src="/admin.js"></script>
+  </body>
+</html>

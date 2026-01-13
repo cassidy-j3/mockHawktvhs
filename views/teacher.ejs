@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teacher Dashboard - Mock Trial Hub</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <h1>Teacher Dashboard</h1>
+        <a class="back" href="/">Back</a>
+      </header>
+
+      <section class="panel">
+        <h2>Match Status</h2>
+        <div id="matchDisplay">
+          <% if (matches.length === 0) { %>
+            <p class="empty">No matches configured yet.</p>
+          <% } else { %>
+            <ul class="match-list">
+              <% matches.forEach((m) => { %>
+                <li class="match-item">
+                  <strong>Courtroom <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionLabel %></span>
+                  vs
+                  <span><%= m.defenseLabel %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Scores</h2>
+        <div id="scoresList">
+          <% if (scores.length === 0) { %>
+            <p class="empty">No scores submitted yet.</p>
+          <% } else { %>
+            <ul class="scores">
+              <% scores.forEach((s) => { %>
+                <% const match = matches.find((m) => m.id === s.matchId); %>
+                <% const matchLabel = match ? `Courtroom ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
+                <li>
+                  <strong><%= s.judgeName || "Judge" %></strong> - <%= matchLabel %>
+                  <span><%= s.side %> - <%= s.score %></span>
+                  <span class="note"><%= s.notes || "" %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+    </main>
+
+    <script src="/teacher.js"></script>
+  </body>
+</html>

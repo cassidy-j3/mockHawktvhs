@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Judges - Mock Trial Hub</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <h1>Judges</h1>
+        <a class="back" href="/">Back</a>
+      </header>
+
+      <% if (!judge) { %>
+        <section class="panel">
+          <h2>Judge Access</h2>
+          <% if (!hasJudges) { %>
+            <p class="empty">No judge pins created yet. Ask an admin to add you.</p>
+          <% } else { %>
+            <form method="get" action="/judges">
+              <label>
+                Enter your judge pin
+                <input name="pin" required />
+              </label>
+              <button type="submit">Continue</button>
+            </form>
+          <% } %>
+        </section>
+      <% } else { %>
+        <section class="panel">
+          <h2>Matches</h2>
+          <% if (matches.length === 0) { %>
+            <p class="empty">No matches configured yet.</p>
+          <% } else { %>
+            <ul class="match-list">
+              <% matches.forEach((m) => { %>
+                <li class="match-item">
+                  <strong>Courtroom <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionLabel %></span>
+                  vs
+                  <span><%= m.defenseLabel %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </section>
+
+        <form class="panel" method="post" action="/judges/score">
+          <h2>Enter Score</h2>
+          <label>
+            Judge name
+            <input name="judgeName" value="<%= judge.name %>" required />
+          </label>
+          <label>
+            Match
+            <select name="matchId" required>
+              <option value="">Choose</option>
+              <% matches.forEach((m) => { %>
+                <option value="<%= m.id %>">
+                  Courtroom <%= m.courtroom || "TBD" %>:
+                  <%= m.prosecutionLabel %> vs <%= m.defenseLabel %>
+                </option>
+              <% }) %>
+            </select>
+          </label>
+          <label>
+            Side
+            <select name="side" required>
+              <option value="">Choose</option>
+              <option value="Prosecution">Prosecution</option>
+              <option value="Defense">Defense</option>
+            </select>
+          </label>
+          <label>
+            Score
+            <input name="score" type="number" min="0" max="100" required />
+          </label>
+          <label>
+            Notes
+            <textarea name="notes" rows="3"></textarea>
+          </label>
+          <button type="submit">Submit Score</button>
+        </form>
+      <% } %>
+    </main>
+  </body>
+</html>
