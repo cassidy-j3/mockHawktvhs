@@ -31,58 +31,166 @@
       <% } else { %>
         <section class="panel">
           <h2>Matches</h2>
+          <p class="empty">Judge: <%= judge.name %></p>
           <% if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
             <ul class="match-list">
               <% matches.forEach((m) => { %>
                 <li class="match-item">
-                  <strong>Courtroom <%= m.courtroom || "TBD" %></strong>:
-                  <span><%= m.prosecutionLabel %></span>
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionCode %></span>
                   vs
-                  <span><%= m.defenseLabel %></span>
+                  <span><%= m.defenseCode %></span>
                 </li>
               <% }) %>
             </ul>
           <% } %>
         </section>
 
-        <form class="panel" method="post" action="/judges/score">
-          <h2>Enter Score</h2>
-          <label>
-            Judge name
-            <input name="judgeName" value="<%= judge.name %>" required />
-          </label>
-          <label>
-            Match
-            <select name="matchId" required>
-              <option value="">Choose</option>
-              <% matches.forEach((m) => { %>
-                <option value="<%= m.id %>">
-                  Courtroom <%= m.courtroom || "TBD" %>:
-                  <%= m.prosecutionLabel %> vs <%= m.defenseLabel %>
-                </option>
-              <% }) %>
-            </select>
-          </label>
-          <label>
-            Side
-            <select name="side" required>
-              <option value="">Choose</option>
-              <option value="Prosecution">Prosecution</option>
-              <option value="Defense">Defense</option>
-            </select>
-          </label>
-          <label>
-            Score
-            <input name="score" type="number" min="0" max="100" required />
-          </label>
-          <label>
-            Notes
-            <textarea name="notes" rows="3"></textarea>
-          </label>
-          <button type="submit">Submit Score</button>
-        </form>
+        <section class="panel">
+          <h2>Score Sheet</h2>
+          <div class="score-sheet">
+            <div class="score-sheet-note">
+              Using a scale of 1 to 10, rate the P and D in the categories below.
+              Do not use fractional points.
+            </div>
+            <div class="score-scale-numbers">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+              <span>9</span>
+              <span>10</span>
+            </div>
+            <div class="score-scale">
+              <span>Not Effective</span>
+              <span>Fair</span>
+              <span>Good</span>
+              <span>Excellent</span>
+              <span>Outstanding</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th class="score-category">Category</th>
+                  <th class="score-side">P</th>
+                  <th class="score-category">Category</th>
+                  <th class="score-side">D</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Opening Statement</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Opening Statement</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Prosecution/Plaintiff First Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Cross-Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Prosecution/Plaintiff Second Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Cross-Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Prosecution/Plaintiff Third Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Cross-Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Defendant/Defense First Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Direct Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Witness Presentation</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Defendant/Defense Second Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Direct Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Witness Presentation</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Defendant/Defense Third Witness</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Direct Examination</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Witness Presentation</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr>
+                  <td>Closing Argument</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Closing Argument</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr class="score-total">
+                  <td>Subtotal</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Subtotal</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr class="score-total">
+                  <td>Penalty Points</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Penalty Points</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+                <tr class="score-total">
+                  <td>Total Points (Absolutely no ties)</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                  <td>Total Points (Absolutely no ties)</td>
+                  <td><input class="score-input" type="number" min="1" max="10" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
       <% } %>
     </main>
   </body>

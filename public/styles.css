@@ -272,6 +272,76 @@ button:hover {
   border-bottom: 1px solid var(--line);
 }
 
+.score-sheet {
+  background: #ffffff;
+  color: #111111;
+  border: 2px solid #111111;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.score-sheet-note {
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.score-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.score-scale-numbers {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+.score-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.score-sheet th,
+.score-sheet td {
+  border: 1px solid #111111;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.score-category {
+  width: 45%;
+}
+
+.score-side {
+  width: 5%;
+  text-align: center;
+}
+
+.score-input {
+  width: 48px;
+  padding: 4px;
+  border-radius: 0;
+  border: 1px solid #111111;
+  text-align: center;
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.85rem;
+}
+
+.score-input:focus {
+  outline: 2px solid #111111;
+  outline-offset: 1px;
+}
+
+.score-total td {
+  font-weight: 600;
+}
+
 .confirm-message {
   margin: 8px 0 0;
   color: #3e517a;

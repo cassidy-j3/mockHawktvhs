@@ -43,14 +43,23 @@ function teamLabel(team) {
   return `${team.schoolName} - ${team.name} (${team.code})`;
 }
 
-function matchView(match, teamsById) {
+function teamCode(team) {
+  if (!team) return "TBD";
+  return team.code;
+}
+
+function matchView(match, teamsById, judgesById) {
   const prosecution = teamsById.get(match.prosecutionTeamId);
   const defense = teamsById.get(match.defenseTeamId);
+  const judge = judgesById ? judgesById.get(match.judgeId) : null;
   return {
     id: match.id,
     courtroom: match.courtroom,
     prosecutionLabel: prosecution ? teamLabel(prosecution) : "Team TBD",
-    defenseLabel: defense ? teamLabel(defense) : "BYE"
+    defenseLabel: defense ? teamLabel(defense) : "BYE",
+    prosecutionCode: teamCode(prosecution),
+    defenseCode: teamCode(defense),
+    judgeName: judge ? judge.name : "Unassigned"
   };
 }
 
@@ -106,10 +115,11 @@ app.get("/", (req, res) => {
 app.get("/admin", (req, res) => {
   const teams = getTeams();
   const teamsById = new Map(teams.map((t) => [t.id, t]));
+  const judgesById = new Map(state.judges.map((j) => [j.id, j]));
   res.render("admin", {
     schools: state.schools,
     teams,
-    matches: state.matches.map((m) => matchView(m, teamsById)),
+    matches: state.matches.map((m) => matchView(m, teamsById, judgesById)),
     judges: state.judges,
     rooms: state.rooms
   });
@@ -195,6 +205,40 @@ app.post("/admin/team/delete", (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/school/delete", (req, res) => {
+  const schoolId = Number(req.body.schoolId);
+  const school = state.schools.find((s) => s.id === schoolId);
+  if (!school) {
+    res.redirect("/admin");
+    return;
+  }
+
+  const removedTeamIds = new Set(school.teams.map((t) => t.id));
+  state.schools = state.schools.filter((s) => s.id !== schoolId);
+
+  const removedMatchIds = new Set();
+  state.matches = state.matches.filter((match) => {
+    const removed =
+      removedTeamIds.has(match.prosecutionTeamId) ||
+      removedTeamIds.has(match.defenseTeamId);
+    if (removed) {
+      removedMatchIds.add(match.id);
+    }
+    return !removed;
+  });
+
+  if (removedMatchIds.size > 0) {
+    state.scores = state.scores.filter((score) => !removedMatchIds.has(score.matchId));
+  }
+
+  broadcast("schools", state.schools);
+  broadcast("matches", state.matches);
+  if (removedMatchIds.size > 0) {
+    broadcast("scores_reset", []);
+  }
+  res.redirect("/admin");
+});
+
 app.post("/admin/room", (req, res) => {
   const { roomNumber } = req.body;
   const value = (roomNumber || "").trim();
@@ -254,6 +298,10 @@ app.post("/admin/start", (req, res) => {
   if (rooms.length) {
     shuffle(rooms);
   }
+  const judgeIds = state.judges.map((j) => j.id);
+  if (judgeIds.length) {
+    shuffle(judgeIds);
+  }
   let roomIndex = 0;
   for (let i = 0; i < teamIds.length; i += 2) {
     const prosecutionTeamId = teamIds[i];
@@ -262,12 +310,15 @@ app.post("/admin/start", (req, res) => {
       rooms.length > 0
         ? rooms[roomIndex % rooms.length].label
         : String(Math.floor(i / 2) + 1);
+    const judgeId =
+      judgeIds.length > 0 ? judgeIds[roomIndex % judgeIds.length] : null;
     roomIndex += 1;
     state.matches.push({
       id: state.nextMatchId++,
       courtroom: room,
       prosecutionTeamId,
-      defenseTeamId
+      defenseTeamId,
+      judgeId
     });
   }
 
@@ -287,21 +338,41 @@ app.get("/judges", (req, res) => {
 
   const teams = getTeams();
   const teamsById = new Map(teams.map((t) => [t.id, t]));
+  const judgesById = new Map(state.judges.map((j) => [j.id, j]));
+  const assignedMatches = state.matches.filter((m) => m.judgeId === judge.id);
   res.render("judges", {
     judge,
-    matches: state.matches.map((m) => matchView(m, teamsById)),
+    matches: assignedMatches.map((m) => matchView(m, teamsById, judgesById)),
     hasJudges: true
   });
 });
 
 app.post("/judges/score", (req, res) => {
-  const { judgeName, matchId, side, score, notes } = req.body;
+  const {
+    judgeName,
+    matchId,
+    judgeId,
+    side,
+    score,
+    notes,
+    prosecutionCode,
+    defenseCode
+  } = req.body;
+  const match = state.matches.find((m) => m.id === Number(matchId));
+  const judge = state.judges.find((j) => j.id === Number(judgeId));
+  if (!match || !judge || match.judgeId !== judge.id) {
+    res.redirect("/judges");
+    return;
+  }
   const entry = {
     judgeName: judgeName || "",
+    judgeId: judge.id,
     matchId: Number(matchId) || null,
     side: side || "",
     score: Number(score) || 0,
     notes: notes || "",
+    prosecutionCode: (prosecutionCode || "").trim(),
+    defenseCode: (defenseCode || "").trim(),
     ts: Date.now()
   };
   state.scores.push(entry);
@@ -312,9 +383,10 @@ app.post("/judges/score", (req, res) => {
 app.get("/teacher", (req, res) => {
   const teams = getTeams();
   const teamsById = new Map(teams.map((t) => [t.id, t]));
+  const judgesById = new Map(state.judges.map((j) => [j.id, j]));
   res.render("teacher", {
     schools: state.schools,
-    matches: state.matches.map((m) => matchView(m, teamsById)),
+    matches: state.matches.map((m) => matchView(m, teamsById, judgesById)),
     scores: state.scores
   });
 });

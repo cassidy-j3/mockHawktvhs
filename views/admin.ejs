@@ -93,7 +93,13 @@
             <ul class="school-list">
               <% schools.forEach((s) => { %>
                 <li class="school-item">
-                  <strong><%= s.name %></strong>
+                  <div class="list-row">
+                    <strong><%= s.name %></strong>
+                    <form method="post" action="/admin/school/delete">
+                      <input type="hidden" name="schoolId" value="<%= s.id %>" />
+                      <button type="submit" class="delete-button">Delete</button>
+                    </form>
+                  </div>
                   <% if (s.teams.length === 0) { %>
                     <p class="empty">No teams yet.</p>
                   <% } else { %>
