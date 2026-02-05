@@ -342,6 +342,36 @@ button:hover {
   font-weight: 600;
 }
 
+.score-text {
+  display: grid;
+  gap: 8px;
+}
+
+.score-line {
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: 12px;
+  align-items: center;
+}
+
+.score-line .score-input {
+  width: 64px;
+}
+
+.score-subtotal {
+  font-weight: 600;
+}
+
+.score-total {
+  text-align: right;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
 .confirm-message {
   margin: 8px 0 0;
   color: #3e517a;

@@ -65,6 +65,7 @@ function renderScores(scores, matchesById, teamsById) {
 let schools = [];
 let matches = [];
 const scores = [];
+const results = [];
 
 function renderAll() {
   const teams = getTeams(schools);
@@ -72,6 +73,7 @@ function renderAll() {
   const matchesById = new Map(matches.map((m) => [String(m.id), m]));
   renderMatches(matches, teamsById);
   renderScores(scores, matchesById, teamsById);
+  renderResults(results, matchesById);
 }
 
 source.addEventListener("schools", (event) => {
@@ -91,5 +93,44 @@ source.addEventListener("score", (event) => {
 
 source.addEventListener("scores_reset", () => {
   scores.length = 0;
+  renderAll();
+});
+
+function renderResults(list, matchesById) {
+  const resultsList = document.getElementById("resultsList");
+  if (!resultsList) return;
+
+  if (!list.length) {
+    resultsList.innerHTML = '<p class="empty">No results submitted yet.</p>';
+    return;
+  }
+
+  const items = list
+    .map((r) => {
+      const match = matchesById.get(String(r.matchId));
+      const label = match
+        ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}`
+        : "Match TBD";
+      return `
+        <li>
+          <strong>${label}</strong>
+          <span>Judge: ${r.judgeName}</span>
+          <span>Prosecution: ${r.prosecutionTotal} | Defense: ${r.defenseTotal}</span>
+          <span class="note">Winner: ${r.winner}</span>
+        </li>`;
+    })
+    .join("");
+
+  resultsList.innerHTML = `<ul class="scores">${items}</ul>`;
+}
+
+source.addEventListener("results", (event) => {
+  const result = JSON.parse(event.data);
+  const index = results.findIndex((r) => r.matchId === result.matchId);
+  if (index >= 0) {
+    results[index] = result;
+  } else {
+    results.push(result);
+  }
   renderAll();
 });

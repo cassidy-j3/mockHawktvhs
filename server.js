@@ -20,6 +20,7 @@ const state = {
   schools: [],
   matches: [],
   scores: [],
+  results: [],
   judges: [],
   rooms: [],
   nextSchoolId: 1,
@@ -380,6 +381,46 @@ app.post("/judges/score", (req, res) => {
   res.redirect("/judges");
 });
 
+app.post("/judges/submit", (req, res) => {
+  const { matchId, judgeId, prosecutionTotal, defenseTotal } = req.body;
+  const match = state.matches.find((m) => m.id === Number(matchId));
+  const judge = state.judges.find((j) => j.id === Number(judgeId));
+  const pTotal = Number(prosecutionTotal);
+  const dTotal = Number(defenseTotal);
+
+  if (!match || !judge || match.judgeId !== judge.id) {
+    res.status(400).json({ error: "Invalid match or judge." });
+    return;
+  }
+  if (Number.isNaN(pTotal) || Number.isNaN(dTotal)) {
+    res.status(400).json({ error: "Totals must be numbers." });
+    return;
+  }
+  if (pTotal === dTotal) {
+    res.status(400).json({ error: "There can’t be any ties." });
+    return;
+  }
+
+  const winner = pTotal > dTotal ? "Prosecution" : "Defense";
+  const existingIndex = state.results.findIndex((r) => r.matchId === match.id);
+  const result = {
+    matchId: match.id,
+    judgeName: judge.name,
+    prosecutionTotal: pTotal,
+    defenseTotal: dTotal,
+    winner
+  };
+
+  if (existingIndex >= 0) {
+    state.results[existingIndex] = result;
+  } else {
+    state.results.push(result);
+  }
+
+  broadcast("results", result);
+  res.json({ ok: true });
+});
+
 app.get("/teacher", (req, res) => {
   const teams = getTeams();
   const teamsById = new Map(teams.map((t) => [t.id, t]));
@@ -387,7 +428,8 @@ app.get("/teacher", (req, res) => {
   res.render("teacher", {
     schools: state.schools,
     matches: state.matches.map((m) => matchView(m, teamsById, judgesById)),
-    scores: state.scores
+    scores: state.scores,
+    results: state.results
   });
 });
 
@@ -402,6 +444,9 @@ app.get("/events", (req, res) => {
   res.write(`event: matches\ndata: ${JSON.stringify(state.matches)}\n\n`);
   for (const score of state.scores) {
     res.write(`event: score\ndata: ${JSON.stringify(score)}\n\n`);
+  }
+  for (const result of state.results) {
+    res.write(`event: results\ndata: ${JSON.stringify(result)}\n\n`);
   }
 
   sseClients.add(res);

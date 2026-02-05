@@ -53,6 +53,28 @@
           <% } %>
         </div>
       </section>
+
+      <section class="panel">
+        <h2>Results</h2>
+        <div id="resultsList">
+          <% if (results.length === 0) { %>
+            <p class="empty">No results submitted yet.</p>
+          <% } else { %>
+            <ul class="scores">
+              <% results.forEach((r) => { %>
+                <% const match = matches.find((m) => m.id === r.matchId); %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
+                <li>
+                  <strong><%= matchLabel %></strong>
+                  <span>Judge: <%= r.judgeName %></span>
+                  <span>Prosecution: <%= r.prosecutionTotal %> | Defense: <%= r.defenseTotal %></span>
+                  <span class="note">Winner: <%= r.winner %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
     </main>
 
     <script src="/teacher.js"></script>
