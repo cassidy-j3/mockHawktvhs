@@ -14,7 +14,7 @@
       </header>
 
       <section class="panel">
-        <h2>Match Status</h2>
+        <h2>Round 1</h2>
         <div id="matchDisplay">
           <% if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
@@ -34,19 +34,18 @@
       </section>
 
       <section class="panel">
-        <h2>Scores</h2>
-        <div id="scoresList">
-          <% if (scores.length === 0) { %>
-            <p class="empty">No scores submitted yet.</p>
+        <h2>Round 2</h2>
+        <div id="matchDisplayRound2">
+          <% if (matchesRound2.length === 0) { %>
+            <p class="empty">No round 2 matches configured yet.</p>
           <% } else { %>
-            <ul class="scores">
-              <% scores.forEach((s) => { %>
-                <% const match = matches.find((m) => m.id === s.matchId); %>
-                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
-                <li>
-                  <strong><%= s.judgeName || "Judge" %></strong> - <%= matchLabel %>
-                  <span><%= s.side %> - <%= s.score %></span>
-                  <span class="note"><%= s.notes || "" %></span>
+            <ul class="match-list">
+              <% matchesRound2.forEach((m) => { %>
+                <li class="match-item">
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionLabel %></span>
+                  vs
+                  <span><%= m.defenseLabel %></span>
                 </li>
               <% }) %>
             </ul>
@@ -62,8 +61,8 @@
           <% } else { %>
             <ul class="scores">
               <% results.forEach((r) => { %>
-                <% const match = matches.find((m) => m.id === r.matchId); %>
-                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
+                <% const match = matches.find((m) => m.id === r.matchId) || matchesRound2.find((m) => m.id === r.matchId); %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel || "Team TBD"} vs ${match.defenseLabel || "Team TBD"}` : "Match TBD"; %>
                 <li>
                   <strong><%= matchLabel %></strong>
                   <span>Judge: <%= r.judgeName %></span>

@@ -2,6 +2,7 @@ const scoreSections = document.querySelectorAll("[data-score-section]");
 const scoreGrid = document.querySelector(".score-grid");
 const judgeId = scoreGrid?.dataset.judgeId || "";
 const matchId = scoreGrid?.dataset.matchId || "";
+const round = scoreGrid?.dataset.round || "1";
 
 function clampInput(input) {
   if (input.value === "") return;
@@ -52,6 +53,10 @@ if (submitButton && submitMessage && scoreSections.length === 2) {
   }
 
   submitButton.addEventListener("click", () => {
+    if (!matchId) {
+      submitMessage.textContent = "No match assigned for this round.";
+      return;
+    }
     const allInputs = document.querySelectorAll(".score-input");
     for (const input of allInputs) {
       if (input.value === "") {
@@ -100,7 +105,8 @@ if (submitButton && submitMessage && scoreSections.length === 2) {
         matchId,
         judgeId,
         prosecutionTotal,
-        defenseTotal
+        defenseTotal,
+        round
       })
     })
       .then(async (res) => {

@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 3000;
+const basePort = Number(process.env.PORT) || 3000;
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const state = {
   schools: [],
   matches: [],
+  matchesRound2: [],
   scores: [],
   results: [],
   judges: [],
@@ -49,7 +50,7 @@ function teamCode(team) {
   return team.code;
 }
 
-function matchView(match, teamsById, judgesById) {
+function matchView(match, teamsById, judgesById, round) {
   const prosecution = teamsById.get(match.prosecutionTeamId);
   const defense = teamsById.get(match.defenseTeamId);
   const judge = judgesById ? judgesById.get(match.judgeId) : null;
@@ -60,7 +61,8 @@ function matchView(match, teamsById, judgesById) {
     defenseLabel: defense ? teamLabel(defense) : "BYE",
     prosecutionCode: teamCode(prosecution),
     defenseCode: teamCode(defense),
-    judgeName: judge ? judge.name : "Unassigned"
+    judgeName: judge ? judge.name : "Unassigned",
+    round
   };
 }
 
@@ -100,6 +102,76 @@ function shuffle(list) {
   }
 }
 
+function buildPairSet(matches) {
+  const set = new Set();
+  for (const match of matches) {
+    if (!match.defenseTeamId) continue;
+    const a = Math.min(match.prosecutionTeamId, match.defenseTeamId);
+    const b = Math.max(match.prosecutionTeamId, match.defenseTeamId);
+    set.add(`${a}-${b}`);
+  }
+  return set;
+}
+
+function generateRoundMatches(teamIds, rooms, judgeIds, disallowedPairs) {
+  const maxAttempts = 1000;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const shuffled = [...teamIds];
+    shuffle(shuffled);
+    const matches = [];
+    let roomIndex = 0;
+    let ok = true;
+
+    for (let i = 0; i < shuffled.length; i += 2) {
+      const prosecutionTeamId = shuffled[i];
+      const defenseTeamId = shuffled[i + 1] || null;
+      if (defenseTeamId) {
+        const a = Math.min(prosecutionTeamId, defenseTeamId);
+        const b = Math.max(prosecutionTeamId, defenseTeamId);
+        if (disallowedPairs.has(`${a}-${b}`)) {
+          ok = false;
+          break;
+        }
+      }
+
+      const room =
+        rooms.length > 0
+          ? rooms[roomIndex % rooms.length].label
+          : String(Math.floor(i / 2) + 1);
+      const judgeId =
+        judgeIds.length > 0 ? judgeIds[roomIndex % judgeIds.length] : null;
+      roomIndex += 1;
+
+      matches.push({
+        id: state.nextMatchId++,
+        courtroom: room,
+        prosecutionTeamId,
+        defenseTeamId,
+        judgeId
+      });
+    }
+
+    if (ok) {
+      return matches;
+    }
+  }
+
+  return [];
+}
+
+function buildRoleMap(matches) {
+  const map = new Map();
+  for (const match of matches) {
+    if (match.prosecutionTeamId) {
+      map.set(match.prosecutionTeamId, "P");
+    }
+    if (match.defenseTeamId) {
+      map.set(match.defenseTeamId, "D");
+    }
+  }
+  return map;
+}
+
 const sseClients = new Set();
 
 function broadcast(event, payload) {
@@ -120,7 +192,7 @@ app.get("/admin", (req, res) => {
   res.render("admin", {
     schools: state.schools,
     teams,
-    matches: state.matches.map((m) => matchView(m, teamsById, judgesById)),
+    matches: state.matches.map((m) => matchView(m, teamsById, judgesById, 1)),
     judges: state.judges,
     rooms: state.rooms
   });
@@ -291,10 +363,6 @@ app.post("/admin/start", (req, res) => {
   }
 
   const teamIds = teams.map((t) => t.id);
-  shuffle(teamIds);
-
-  state.matches = [];
-  state.scores = [];
   const rooms = [...state.rooms];
   if (rooms.length) {
     shuffle(rooms);
@@ -303,27 +371,34 @@ app.post("/admin/start", (req, res) => {
   if (judgeIds.length) {
     shuffle(judgeIds);
   }
-  let roomIndex = 0;
-  for (let i = 0; i < teamIds.length; i += 2) {
-    const prosecutionTeamId = teamIds[i];
-    const defenseTeamId = teamIds[i + 1] || null;
-    const room =
-      rooms.length > 0
-        ? rooms[roomIndex % rooms.length].label
-        : String(Math.floor(i / 2) + 1);
-    const judgeId =
-      judgeIds.length > 0 ? judgeIds[roomIndex % judgeIds.length] : null;
-    roomIndex += 1;
-    state.matches.push({
-      id: state.nextMatchId++,
-      courtroom: room,
-      prosecutionTeamId,
-      defenseTeamId,
-      judgeId
-    });
+  state.matches = [];
+  state.matchesRound2 = [];
+  state.scores = [];
+
+  const round1Matches = generateRoundMatches(teamIds, rooms, judgeIds, new Set());
+  state.matches = round1Matches;
+
+  const disallowedPairs = buildPairSet(round1Matches);
+  const round2Matches = generateRoundMatches(teamIds, rooms, judgeIds, disallowedPairs);
+  const roleMap = buildRoleMap(round1Matches);
+  for (const match of round2Matches) {
+    if (!match.defenseTeamId) continue;
+    const pRole = roleMap.get(match.prosecutionTeamId);
+    const dRole = roleMap.get(match.defenseTeamId);
+    const shouldSwap =
+      (pRole === "P" && dRole === "D") ||
+      (pRole === "P" && !dRole) ||
+      (!pRole && dRole === "D");
+    if (shouldSwap) {
+      const temp = match.prosecutionTeamId;
+      match.prosecutionTeamId = match.defenseTeamId;
+      match.defenseTeamId = temp;
+    }
   }
+  state.matchesRound2 = round2Matches;
 
   broadcast("matches", state.matches);
+  broadcast("matches_round2", state.matchesRound2);
   broadcast("scores_reset", []);
   res.redirect("/admin");
 });
@@ -340,11 +415,18 @@ app.get("/judges", (req, res) => {
   const teams = getTeams();
   const teamsById = new Map(teams.map((t) => [t.id, t]));
   const judgesById = new Map(state.judges.map((j) => [j.id, j]));
-  const assignedMatches = state.matches.filter((m) => m.judgeId === judge.id);
+  const assignedRound1 = state.matches.filter((m) => m.judgeId === judge.id);
+  const assignedRound2 = state.matchesRound2.filter((m) => m.judgeId === judge.id);
+  const hasRound1Result = assignedRound1.some((m) =>
+    state.results.some((r) => r.matchId === m.id && r.round === 1)
+  );
+  const currentRound = hasRound1Result ? 2 : 1;
+  const assignedMatches = currentRound === 1 ? assignedRound1 : assignedRound2;
   res.render("judges", {
     judge,
-    matches: assignedMatches.map((m) => matchView(m, teamsById, judgesById)),
-    hasJudges: true
+    matches: assignedMatches.map((m) => matchView(m, teamsById, judgesById, currentRound)),
+    hasJudges: true,
+    currentRound
   });
 });
 
@@ -382,13 +464,16 @@ app.post("/judges/score", (req, res) => {
 });
 
 app.post("/judges/submit", (req, res) => {
-  const { matchId, judgeId, prosecutionTotal, defenseTotal } = req.body;
+  const { matchId, judgeId, prosecutionTotal, defenseTotal, round } = req.body;
   const match = state.matches.find((m) => m.id === Number(matchId));
+  const matchRound2 = state.matchesRound2.find((m) => m.id === Number(matchId));
+  const targetMatch = match || matchRound2;
+  const roundNumber = Number(round) || (match ? 1 : 2);
   const judge = state.judges.find((j) => j.id === Number(judgeId));
   const pTotal = Number(prosecutionTotal);
   const dTotal = Number(defenseTotal);
 
-  if (!match || !judge || match.judgeId !== judge.id) {
+  if (!targetMatch || !judge || targetMatch.judgeId !== judge.id) {
     res.status(400).json({ error: "Invalid match or judge." });
     return;
   }
@@ -402,9 +487,10 @@ app.post("/judges/submit", (req, res) => {
   }
 
   const winner = pTotal > dTotal ? "Prosecution" : "Defense";
-  const existingIndex = state.results.findIndex((r) => r.matchId === match.id);
+  const existingIndex = state.results.findIndex((r) => r.matchId === targetMatch.id);
   const result = {
-    matchId: match.id,
+    matchId: targetMatch.id,
+    round: roundNumber,
     judgeName: judge.name,
     prosecutionTotal: pTotal,
     defenseTotal: dTotal,
@@ -427,7 +513,10 @@ app.get("/teacher", (req, res) => {
   const judgesById = new Map(state.judges.map((j) => [j.id, j]));
   res.render("teacher", {
     schools: state.schools,
-    matches: state.matches.map((m) => matchView(m, teamsById, judgesById)),
+    matches: state.matches.map((m) => matchView(m, teamsById, judgesById, 1)),
+    matchesRound2: (state.matchesRound2 || []).map((m) =>
+      matchView(m, teamsById, judgesById, 2)
+    ),
     scores: state.scores,
     results: state.results
   });
@@ -442,6 +531,7 @@ app.get("/events", (req, res) => {
   // Send initial state so dashboards can render immediately.
   res.write(`event: schools\ndata: ${JSON.stringify(state.schools)}\n\n`);
   res.write(`event: matches\ndata: ${JSON.stringify(state.matches)}\n\n`);
+  res.write(`event: matches_round2\ndata: ${JSON.stringify(state.matchesRound2)}\n\n`);
   for (const score of state.scores) {
     res.write(`event: score\ndata: ${JSON.stringify(score)}\n\n`);
   }
@@ -455,6 +545,19 @@ app.get("/events", (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Mock trial server running at http://localhost:${port}`);
-});
+function startServer(port, remaining) {
+  const server = app.listen(port, () => {
+    console.log(`Mock trial server running at http://localhost:${port}`);
+  });
+
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE" && remaining > 0) {
+      server.close(() => startServer(port + 1, remaining - 1));
+      return;
+    }
+    console.error("Failed to start server:", err.message);
+    process.exit(1);
+  });
+}
+
+startServer(basePort, 9);

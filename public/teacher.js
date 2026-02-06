@@ -1,5 +1,5 @@
 const matchDisplay = document.getElementById("matchDisplay");
-const scoresList = document.getElementById("scoresList");
+const matchDisplayRound2 = document.getElementById("matchDisplayRound2");
 const source = new EventSource("/events");
 
 function getTeams(schools) {
@@ -22,9 +22,10 @@ function matchLabel(match, teamsById) {
   return `Courtroom ${match.courtroom || "TBD"}: ${teamLabel(prosecution)} vs ${teamLabel(defense)}`;
 }
 
-function renderMatches(list, teamsById) {
+function renderMatches(list, teamsById, target) {
+  if (!target) return;
   if (!list.length) {
-    matchDisplay.innerHTML = '<p class="empty">No matches configured yet.</p>';
+    target.innerHTML = '<p class="empty">No matches configured yet.</p>';
     return;
   }
 
@@ -37,33 +38,12 @@ function renderMatches(list, teamsById) {
     )
     .join("");
 
-  matchDisplay.innerHTML = `<ul class="match-list">${items}</ul>`;
-}
-
-function renderScores(scores, matchesById, teamsById) {
-  if (!scores.length) {
-    scoresList.innerHTML = '<p class="empty">No scores submitted yet.</p>';
-    return;
-  }
-
-  const items = scores
-    .map((s) => {
-      const match = matchesById.get(String(s.matchId));
-      const label = match ? matchLabel(match, teamsById) : "Match TBD";
-      return `
-        <li>
-          <strong>${s.judgeName || "Judge"}</strong> - ${label}
-          <span>${s.side} - ${s.score}</span>
-          <span class="note">${s.notes || ""}</span>
-        </li>`;
-    })
-    .join("");
-
-  scoresList.innerHTML = `<ul class="scores">${items}</ul>`;
+  target.innerHTML = `<ul class="match-list">${items}</ul>`;
 }
 
 let schools = [];
 let matches = [];
+let matchesRound2 = [];
 const scores = [];
 const results = [];
 
@@ -71,9 +51,10 @@ function renderAll() {
   const teams = getTeams(schools);
   const teamsById = new Map(teams.map((t) => [t.id, t]));
   const matchesById = new Map(matches.map((m) => [String(m.id), m]));
-  renderMatches(matches, teamsById);
-  renderScores(scores, matchesById, teamsById);
-  renderResults(results, matchesById);
+  const matchesRound2ById = new Map(matchesRound2.map((m) => [String(m.id), m]));
+  renderMatches(matches, teamsById, matchDisplay);
+  renderMatches(matchesRound2, teamsById, matchDisplayRound2);
+  renderResults(results, matchesById, matchesRound2ById);
 }
 
 source.addEventListener("schools", (event) => {
@@ -83,6 +64,11 @@ source.addEventListener("schools", (event) => {
 
 source.addEventListener("matches", (event) => {
   matches = JSON.parse(event.data);
+  renderAll();
+});
+
+source.addEventListener("matches_round2", (event) => {
+  matchesRound2 = JSON.parse(event.data);
   renderAll();
 });
 
@@ -96,7 +82,7 @@ source.addEventListener("scores_reset", () => {
   renderAll();
 });
 
-function renderResults(list, matchesById) {
+function renderResults(list, matchesById, matchesRound2ById) {
   const resultsList = document.getElementById("resultsList");
   if (!resultsList) return;
 
@@ -107,9 +93,13 @@ function renderResults(list, matchesById) {
 
   const items = list
     .map((r) => {
-      const match = matchesById.get(String(r.matchId));
+      const match =
+        matchesById.get(String(r.matchId)) ||
+        matchesRound2ById.get(String(r.matchId));
       const label = match
-        ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}`
+        ? `Room ${match.courtroom || "TBD"}: ${
+            match.prosecutionLabel || "Team TBD"
+          } vs ${match.defenseLabel || "Team TBD"}`
         : "Match TBD";
       return `
         <li>

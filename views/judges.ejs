@@ -32,6 +32,7 @@
         <section class="panel">
           <h2>Matches</h2>
           <p class="empty">Judge: <%= judge.name %></p>
+          <p class="empty">Round <%= currentRound || 1 %></p>
           <% if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
@@ -60,6 +61,7 @@
           class="score-grid"
           data-judge-id="<%= judge.id %>"
           data-match-id="<%= matches.length ? matches[0].id : "" %>"
+          data-round="<%= currentRound || 1 %>"
         >
           <div class="panel" data-score-section="prosecution">
             <h2>Prosecution / Plaintiff</h2>
