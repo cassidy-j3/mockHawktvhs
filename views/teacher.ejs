@@ -54,13 +54,37 @@
       </section>
 
       <section class="panel">
-        <h2>Results</h2>
-        <div id="resultsList">
-          <% if (results.length === 0) { %>
-            <p class="empty">No results submitted yet.</p>
+        <h2>Round 1 Results</h2>
+        <div id="resultsListRound1">
+          <% const round1 = results.filter((r) => r.round === 1); %>
+          <% if (round1.length === 0) { %>
+            <p class="empty">No round 1 results submitted yet.</p>
           <% } else { %>
             <ul class="scores">
-              <% results.forEach((r) => { %>
+              <% round1.forEach((r) => { %>
+                <% const match = matches.find((m) => m.id === r.matchId) || matchesRound2.find((m) => m.id === r.matchId); %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel || "Team TBD"} vs ${match.defenseLabel || "Team TBD"}` : "Match TBD"; %>
+                <li>
+                  <strong><%= matchLabel %></strong>
+                  <span>Judge: <%= r.judgeName %></span>
+                  <span>Prosecution: <%= r.prosecutionTotal %> | Defense: <%= r.defenseTotal %></span>
+                  <span class="note">Winner: <%= r.winner %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Round 2 Results</h2>
+        <div id="resultsListRound2">
+          <% const round2 = results.filter((r) => r.round === 2); %>
+          <% if (round2.length === 0) { %>
+            <p class="empty">No round 2 results submitted yet.</p>
+          <% } else { %>
+            <ul class="scores">
+              <% round2.forEach((r) => { %>
                 <% const match = matches.find((m) => m.id === r.matchId) || matchesRound2.find((m) => m.id === r.matchId); %>
                 <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel || "Team TBD"} vs ${match.defenseLabel || "Team TBD"}` : "Match TBD"; %>
                 <li>

@@ -82,36 +82,48 @@ source.addEventListener("scores_reset", () => {
   renderAll();
 });
 
+source.addEventListener("results_reset", () => {
+  results.length = 0;
+  renderAll();
+});
+
 function renderResults(list, matchesById, matchesRound2ById) {
-  const resultsList = document.getElementById("resultsList");
-  if (!resultsList) return;
+  const resultsListRound1 = document.getElementById("resultsListRound1");
+  const resultsListRound2 = document.getElementById("resultsListRound2");
+  if (!resultsListRound1 || !resultsListRound2) return;
 
-  if (!list.length) {
-    resultsList.innerHTML = '<p class="empty">No results submitted yet.</p>';
-    return;
-  }
+  const round1 = list.filter((r) => r.round === 1);
+  const round2 = list.filter((r) => r.round === 2);
 
-  const items = list
-    .map((r) => {
-      const match =
-        matchesById.get(String(r.matchId)) ||
-        matchesRound2ById.get(String(r.matchId));
-      const label = match
-        ? `Room ${match.courtroom || "TBD"}: ${
-            match.prosecutionLabel || "Team TBD"
-          } vs ${match.defenseLabel || "Team TBD"}`
-        : "Match TBD";
-      return `
+  function renderInto(target, items) {
+    if (!items.length) {
+      target.innerHTML = "<p class=\"empty\">No results submitted yet.</p>";
+      return;
+    }
+    const markup = items
+      .map((r) => {
+        const match =
+          matchesById.get(String(r.matchId)) ||
+          matchesRound2ById.get(String(r.matchId));
+        const label = match
+          ? `Room ${match.courtroom || "TBD"}: ${
+              match.prosecutionLabel || "Team TBD"
+            } vs ${match.defenseLabel || "Team TBD"}`
+          : "Match TBD";
+        return `
         <li>
           <strong>${label}</strong>
           <span>Judge: ${r.judgeName}</span>
           <span>Prosecution: ${r.prosecutionTotal} | Defense: ${r.defenseTotal}</span>
           <span class="note">Winner: ${r.winner}</span>
         </li>`;
-    })
-    .join("");
+      })
+      .join("");
+    target.innerHTML = `<ul class="scores">${markup}</ul>`;
+  }
 
-  resultsList.innerHTML = `<ul class="scores">${items}</ul>`;
+  renderInto(resultsListRound1, round1);
+  renderInto(resultsListRound2, round2);
 }
 
 source.addEventListener("results", (event) => {

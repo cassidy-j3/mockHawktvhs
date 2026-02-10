@@ -12,7 +12,11 @@
         <h1>Admin</h1>
         <a class="back" href="/">Back</a>
       </header>
-
+      <% if (resetSuccess) { %>
+        <section class="panel">
+          <p class="confirm-message">Competition reset. All data cleared.</p>
+        </section>
+      <% } %>
       <div class="admin-layout">
         <aside class="admin-left">
           <section class="panel">
@@ -46,6 +50,10 @@
               <form id="startCompetitionForm" method="post" action="/admin/start">
                 <button id="startCompetitionButton" type="submit">Start Competition</button>
                 <p id="startCompetitionMessage" class="confirm-message"></p>
+              </form>
+              <form id="restartCompetitionForm" method="post" action="/admin/restart">
+                <button id="restartCompetitionButton" type="submit">Restart Competition</button>
+                <p id="restartCompetitionMessage" class="confirm-message"></p>
               </form>
             <% } %>
           </section>

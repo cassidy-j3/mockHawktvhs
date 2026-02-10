@@ -194,7 +194,8 @@ app.get("/admin", (req, res) => {
     teams,
     matches: state.matches.map((m) => matchView(m, teamsById, judgesById, 1)),
     judges: state.judges,
-    rooms: state.rooms
+    rooms: state.rooms,
+    resetSuccess: req.query.reset === "1"
   });
 });
 
@@ -208,7 +209,7 @@ app.post("/admin/match", (req, res) => {
   };
   state.matches.push(match);
   broadcast("matches", state.matches);
-  res.redirect("/admin");
+  res.redirect("/admin?reset=1");
 });
 
 app.post("/admin/school", (req, res) => {
@@ -355,11 +356,10 @@ app.post("/admin/judge/delete", (req, res) => {
   res.redirect("/admin");
 });
 
-app.post("/admin/start", (req, res) => {
+function startCompetition() {
   const teams = getTeams();
   if (teams.length < 2) {
-    res.redirect("/admin");
-    return;
+    return false;
   }
 
   const teamIds = teams.map((t) => t.id);
@@ -374,6 +374,7 @@ app.post("/admin/start", (req, res) => {
   state.matches = [];
   state.matchesRound2 = [];
   state.scores = [];
+  state.results = [];
 
   const round1Matches = generateRoundMatches(teamIds, rooms, judgeIds, new Set());
   state.matches = round1Matches;
@@ -400,6 +401,37 @@ app.post("/admin/start", (req, res) => {
   broadcast("matches", state.matches);
   broadcast("matches_round2", state.matchesRound2);
   broadcast("scores_reset", []);
+  broadcast("results_reset", []);
+  return true;
+}
+
+app.post("/admin/start", (req, res) => {
+  if (!startCompetition()) {
+    res.redirect("/admin");
+    return;
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/restart", (req, res) => {
+  state.schools = [];
+  state.matches = [];
+  state.matchesRound2 = [];
+  state.scores = [];
+  state.results = [];
+  state.judges = [];
+  state.rooms = [];
+  state.nextSchoolId = 1;
+  state.nextTeamId = 1;
+  state.nextMatchId = 1;
+  state.nextJudgeId = 1;
+  state.nextRoomId = 1;
+
+  broadcast("schools", state.schools);
+  broadcast("matches", state.matches);
+  broadcast("matches_round2", state.matchesRound2);
+  broadcast("scores_reset", []);
+  broadcast("results_reset", []);
   res.redirect("/admin");
 });
 
