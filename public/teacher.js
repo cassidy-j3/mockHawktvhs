@@ -1,5 +1,6 @@
 const matchDisplay = document.getElementById("matchDisplay");
 const matchDisplayRound2 = document.getElementById("matchDisplayRound2");
+const matchDisplayRound3 = document.getElementById("matchDisplayRound3");
 const source = new EventSource("/events");
 
 function getTeams(schools) {
@@ -44,6 +45,8 @@ function renderMatches(list, teamsById, target) {
 let schools = [];
 let matches = [];
 let matchesRound2 = [];
+let matchesRound3 = [];
+let teamTotals = [];
 const scores = [];
 const results = [];
 
@@ -52,9 +55,12 @@ function renderAll() {
   const teamsById = new Map(teams.map((t) => [t.id, t]));
   const matchesById = new Map(matches.map((m) => [String(m.id), m]));
   const matchesRound2ById = new Map(matchesRound2.map((m) => [String(m.id), m]));
+  const matchesRound3ById = new Map(matchesRound3.map((m) => [String(m.id), m]));
   renderMatches(matches, teamsById, matchDisplay);
   renderMatches(matchesRound2, teamsById, matchDisplayRound2);
-  renderResults(results, matchesById, matchesRound2ById);
+  renderMatches(matchesRound3, teamsById, matchDisplayRound3);
+  renderTeamTotals(teamTotals);
+  renderResults(results, matchesById, matchesRound2ById, matchesRound3ById);
 }
 
 source.addEventListener("schools", (event) => {
@@ -69,6 +75,16 @@ source.addEventListener("matches", (event) => {
 
 source.addEventListener("matches_round2", (event) => {
   matchesRound2 = JSON.parse(event.data);
+  renderAll();
+});
+
+source.addEventListener("matches_round3", (event) => {
+  matchesRound3 = JSON.parse(event.data);
+  renderAll();
+});
+
+source.addEventListener("team_totals", (event) => {
+  teamTotals = JSON.parse(event.data);
   renderAll();
 });
 
@@ -87,7 +103,7 @@ source.addEventListener("results_reset", () => {
   renderAll();
 });
 
-function renderResults(list, matchesById, matchesRound2ById) {
+function renderResults(list, matchesById, matchesRound2ById, matchesRound3ById) {
   const resultsListRound1 = document.getElementById("resultsListRound1");
   const resultsListRound2 = document.getElementById("resultsListRound2");
   if (!resultsListRound1 || !resultsListRound2) return;
@@ -104,7 +120,8 @@ function renderResults(list, matchesById, matchesRound2ById) {
       .map((r) => {
         const match =
           matchesById.get(String(r.matchId)) ||
-          matchesRound2ById.get(String(r.matchId));
+          matchesRound2ById.get(String(r.matchId)) ||
+          matchesRound3ById.get(String(r.matchId));
         const label = match
           ? `Room ${match.courtroom || "TBD"}: ${
               match.prosecutionLabel || "Team TBD"
@@ -124,6 +141,25 @@ function renderResults(list, matchesById, matchesRound2ById) {
 
   renderInto(resultsListRound1, round1);
   renderInto(resultsListRound2, round2);
+}
+
+function renderTeamTotals(list) {
+  const totalsList = document.getElementById("teamTotalsList");
+  if (!totalsList) return;
+  if (!list.length) {
+    totalsList.innerHTML = '<p class="empty">No team totals yet.</p>';
+    return;
+  }
+  const items = list
+    .map(
+      (t) => `
+        <li>
+          <strong>${t.teamLabel}</strong>
+          <span>Total: ${t.total}</span>
+        </li>`
+    )
+    .join("");
+  totalsList.innerHTML = `<ul class="scores">${items}</ul>`;
 }
 
 source.addEventListener("results", (event) => {

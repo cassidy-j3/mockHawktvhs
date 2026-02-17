@@ -20,6 +20,7 @@ const state = {
   schools: [],
   matches: [],
   matchesRound2: [],
+  matchesRound3: [],
   scores: [],
   results: [],
   judges: [],
@@ -170,6 +171,125 @@ function buildRoleMap(matches) {
     }
   }
   return map;
+}
+
+function findMatchById(matchId) {
+  const lists = [state.matches, state.matchesRound2, state.matchesRound3 || []];
+  for (const list of lists) {
+    const match = list.find((m) => m.id === matchId);
+    if (match) return match;
+  }
+  return null;
+}
+
+function getTeamTotals() {
+  const totals = new Map();
+  const teams = getTeams();
+  for (const team of teams) {
+    totals.set(team.id, 0);
+  }
+
+  for (const result of state.results) {
+    const match = findMatchById(result.matchId);
+    if (!match) continue;
+    if (match.prosecutionTeamId) {
+      totals.set(
+        match.prosecutionTeamId,
+        (totals.get(match.prosecutionTeamId) || 0) + Number(result.prosecutionTotal || 0)
+      );
+    }
+    if (match.defenseTeamId) {
+      totals.set(
+        match.defenseTeamId,
+        (totals.get(match.defenseTeamId) || 0) + Number(result.defenseTotal || 0)
+      );
+    }
+  }
+
+  const teamsById = new Map(teams.map((t) => [t.id, t]));
+  return [...totals.entries()]
+    .map(([teamId, total]) => {
+      const team = teamsById.get(teamId);
+      return {
+        teamId,
+        teamLabel: team ? teamLabel(team) : "Team TBD",
+        total
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
+function isRoundScored(matches, round) {
+  const required = matches.filter((m) => m.defenseTeamId);
+  if (required.length === 0) return false;
+  return required.every((m) =>
+    state.results.some((r) => r.matchId === m.id && r.round === round)
+  );
+}
+
+function maybeGenerateRound3() {
+  if ((state.matchesRound3 || []).length > 0) return;
+  if (!isRoundScored(state.matches, 1)) return;
+  if (!isRoundScored(state.matchesRound2, 2)) return;
+
+  const totals = getTeamTotals();
+  const orderedTeamIds = totals.map((t) => t.teamId);
+  if (orderedTeamIds.length < 2) return;
+
+  const disallowedPairs = new Set([
+    ...buildPairSet(state.matches),
+    ...buildPairSet(state.matchesRound2)
+  ]);
+  const rooms = [...state.rooms];
+  if (rooms.length) shuffle(rooms);
+  const judgeIds = state.judges.map((j) => j.id);
+  if (judgeIds.length) shuffle(judgeIds);
+
+  const used = new Set();
+  const round3 = [];
+  let roomIndex = 0;
+
+  for (let i = 0; i < orderedTeamIds.length; i += 1) {
+    const a = orderedTeamIds[i];
+    if (used.has(a)) continue;
+
+    let opponentIndex = -1;
+    for (let j = i + 1; j < orderedTeamIds.length; j += 1) {
+      const b = orderedTeamIds[j];
+      if (used.has(b)) continue;
+      const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
+      if (!disallowedPairs.has(key)) {
+        opponentIndex = j;
+        break;
+      }
+      if (opponentIndex === -1) {
+        opponentIndex = j;
+      }
+    }
+
+    used.add(a);
+    const b = opponentIndex >= 0 ? orderedTeamIds[opponentIndex] : null;
+    if (b) used.add(b);
+
+    const room =
+      rooms.length > 0
+        ? rooms[roomIndex % rooms.length].label
+        : String(round3.length + 1);
+    const judgeId =
+      judgeIds.length > 0 ? judgeIds[roomIndex % judgeIds.length] : null;
+    roomIndex += 1;
+
+    round3.push({
+      id: state.nextMatchId++,
+      courtroom: room,
+      prosecutionTeamId: a,
+      defenseTeamId: b,
+      judgeId
+    });
+  }
+
+  state.matchesRound3 = round3;
+  broadcast("matches_round3", state.matchesRound3);
 }
 
 const sseClients = new Set();
@@ -373,6 +493,7 @@ function startCompetition() {
   }
   state.matches = [];
   state.matchesRound2 = [];
+  state.matchesRound3 = [];
   state.scores = [];
   state.results = [];
 
@@ -400,6 +521,8 @@ function startCompetition() {
 
   broadcast("matches", state.matches);
   broadcast("matches_round2", state.matchesRound2);
+  broadcast("matches_round3", state.matchesRound3);
+  broadcast("team_totals", getTeamTotals());
   broadcast("scores_reset", []);
   broadcast("results_reset", []);
   return true;
@@ -417,6 +540,7 @@ app.post("/admin/restart", (req, res) => {
   state.schools = [];
   state.matches = [];
   state.matchesRound2 = [];
+  state.matchesRound3 = [];
   state.scores = [];
   state.results = [];
   state.judges = [];
@@ -430,6 +554,8 @@ app.post("/admin/restart", (req, res) => {
   broadcast("schools", state.schools);
   broadcast("matches", state.matches);
   broadcast("matches_round2", state.matchesRound2);
+  broadcast("matches_round3", state.matchesRound3);
+  broadcast("team_totals", []);
   broadcast("scores_reset", []);
   broadcast("results_reset", []);
   res.redirect("/admin");
@@ -535,7 +661,9 @@ app.post("/judges/submit", (req, res) => {
     state.results.push(result);
   }
 
+  maybeGenerateRound3();
   broadcast("results", result);
+  broadcast("team_totals", getTeamTotals());
   res.json({ ok: true });
 });
 
@@ -549,6 +677,10 @@ app.get("/teacher", (req, res) => {
     matchesRound2: (state.matchesRound2 || []).map((m) =>
       matchView(m, teamsById, judgesById, 2)
     ),
+    matchesRound3: (state.matchesRound3 || []).map((m) =>
+      matchView(m, teamsById, judgesById, 3)
+    ),
+    teamTotals: getTeamTotals(),
     scores: state.scores,
     results: state.results
   });
@@ -564,6 +696,8 @@ app.get("/events", (req, res) => {
   res.write(`event: schools\ndata: ${JSON.stringify(state.schools)}\n\n`);
   res.write(`event: matches\ndata: ${JSON.stringify(state.matches)}\n\n`);
   res.write(`event: matches_round2\ndata: ${JSON.stringify(state.matchesRound2)}\n\n`);
+  res.write(`event: matches_round3\ndata: ${JSON.stringify(state.matchesRound3 || [])}\n\n`);
+  res.write(`event: team_totals\ndata: ${JSON.stringify(getTeamTotals())}\n\n`);
   for (const score of state.scores) {
     res.write(`event: score\ndata: ${JSON.stringify(score)}\n\n`);
   }
