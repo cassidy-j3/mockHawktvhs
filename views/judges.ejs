@@ -33,7 +33,9 @@
           <h2>Matches</h2>
           <p class="empty">Judge: <%= judge.name %></p>
           <p class="empty">Round <%= currentRound || 1 %></p>
-          <% if (matches.length === 0) { %>
+          <% if (currentRound === 3 && !round3Confirmed) { %>
+            <p class="empty">Round 3 pairings are waiting for admin confirmation.</p>
+          <% } else if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
             <ul class="match-list">
@@ -170,6 +172,11 @@
               </div>
             </div>
           </div>
+        </section>
+
+        <section class="panel">
+          <button id="autofillScoresButton" type="button">Autofill Scores</button>
+          <p id="autofillScoresMessage" class="confirm-message"></p>
         </section>
 
         <section class="panel">

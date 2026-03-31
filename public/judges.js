@@ -25,6 +25,13 @@ function updateSubtotal(section) {
   if (totalEl) totalEl.textContent = String(total);
 }
 
+function getSubtotal(section) {
+  const totalEl = section.querySelector("[data-score-total]");
+  if (!totalEl) return 0;
+  const value = Number(totalEl.textContent);
+  return Number.isNaN(value) ? 0 : value;
+}
+
 for (const section of scoreSections) {
   const inputs = section.querySelectorAll(".score-input");
   for (const input of inputs) {
@@ -38,19 +45,46 @@ for (const section of scoreSections) {
 
 const submitButton = document.getElementById("submitScoresButton");
 const submitMessage = document.getElementById("submitScoresMessage");
+const autofillButton = document.getElementById("autofillScoresButton");
+const autofillMessage = document.getElementById("autofillScoresMessage");
+
+if (autofillButton && autofillMessage && scoreSections.length === 2) {
+  const [prosecutionSection, defenseSection] = scoreSections;
+
+  autofillButton.addEventListener("click", () => {
+    const prosecutionInputs = prosecutionSection.querySelectorAll(".score-input");
+    const defenseInputs = defenseSection.querySelectorAll(".score-input");
+    let attempts = 0;
+
+    do {
+      for (const input of prosecutionInputs) {
+        input.value = String(Math.floor(Math.random() * 10) + 1);
+      }
+      for (const input of defenseInputs) {
+        input.value = String(Math.floor(Math.random() * 10) + 1);
+      }
+      updateSubtotal(prosecutionSection);
+      updateSubtotal(defenseSection);
+      attempts += 1;
+    } while (
+      getSubtotal(prosecutionSection) === getSubtotal(defenseSection) &&
+      attempts < 100
+    );
+
+    if (getSubtotal(prosecutionSection) === getSubtotal(defenseSection)) {
+      autofillMessage.textContent = "Autofill could not avoid a tie. Try again.";
+      return;
+    }
+
+    autofillMessage.textContent = "Scores autofilled with no tie.";
+  });
+}
 
 if (submitButton && submitMessage && scoreSections.length === 2) {
   let armed = false;
   let timer = null;
 
   const [prosecutionSection, defenseSection] = scoreSections;
-
-  function getSubtotal(section) {
-    const totalEl = section.querySelector("[data-score-total]");
-    if (!totalEl) return 0;
-    const value = Number(totalEl.textContent);
-    return Number.isNaN(value) ? 0 : value;
-  }
 
   submitButton.addEventListener("click", () => {
     if (!matchId) {

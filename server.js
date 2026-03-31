@@ -21,6 +21,7 @@ const state = {
   matches: [],
   matchesRound2: [],
   matchesRound3: [],
+  round3Confirmed: false,
   scores: [],
   results: [],
   judges: [],
@@ -173,6 +174,33 @@ function buildRoleMap(matches) {
   return map;
 }
 
+function clearCompetitionData() {
+  state.schools = [];
+  state.matches = [];
+  state.matchesRound2 = [];
+  state.matchesRound3 = [];
+  state.round3Confirmed = false;
+  state.scores = [];
+  state.results = [];
+  state.judges = [];
+  state.rooms = [];
+  state.nextSchoolId = 1;
+  state.nextTeamId = 1;
+  state.nextMatchId = 1;
+  state.nextJudgeId = 1;
+  state.nextRoomId = 1;
+}
+
+function broadcastFullState() {
+  broadcast("schools", state.schools);
+  broadcast("matches", state.matches);
+  broadcast("matches_round2", state.matchesRound2);
+  broadcast("matches_round3", state.matchesRound3);
+  broadcast("team_totals", getTeamTotals());
+  broadcast("scores_reset", []);
+  broadcast("results_reset", []);
+}
+
 function findMatchById(matchId) {
   const lists = [state.matches, state.matchesRound2, state.matchesRound3 || []];
   for (const list of lists) {
@@ -186,37 +214,57 @@ function getTeamTotals() {
   const totals = new Map();
   const teams = getTeams();
   for (const team of teams) {
-    totals.set(team.id, 0);
+    totals.set(team.id, {
+      total: 0,
+      wins: 0,
+      losses: 0
+    });
   }
 
   for (const result of state.results) {
     const match = findMatchById(result.matchId);
     if (!match) continue;
     if (match.prosecutionTeamId) {
-      totals.set(
-        match.prosecutionTeamId,
-        (totals.get(match.prosecutionTeamId) || 0) + Number(result.prosecutionTotal || 0)
-      );
+      const current = totals.get(match.prosecutionTeamId) || {
+        total: 0,
+        wins: 0,
+        losses: 0
+      };
+      current.total += Number(result.prosecutionTotal || 0);
+      if (result.winner === "Prosecution") current.wins += 1;
+      if (result.winner === "Defense") current.losses += 1;
+      totals.set(match.prosecutionTeamId, current);
     }
     if (match.defenseTeamId) {
-      totals.set(
-        match.defenseTeamId,
-        (totals.get(match.defenseTeamId) || 0) + Number(result.defenseTotal || 0)
-      );
+      const current = totals.get(match.defenseTeamId) || {
+        total: 0,
+        wins: 0,
+        losses: 0
+      };
+      current.total += Number(result.defenseTotal || 0);
+      if (result.winner === "Defense") current.wins += 1;
+      if (result.winner === "Prosecution") current.losses += 1;
+      totals.set(match.defenseTeamId, current);
     }
   }
 
   const teamsById = new Map(teams.map((t) => [t.id, t]));
   return [...totals.entries()]
-    .map(([teamId, total]) => {
+    .map(([teamId, summary]) => {
       const team = teamsById.get(teamId);
       return {
         teamId,
         teamLabel: team ? teamLabel(team) : "Team TBD",
-        total
+        total: summary.total,
+        wins: summary.wins,
+        losses: summary.losses
       };
     })
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (a.losses !== b.losses) return a.losses - b.losses;
+      return b.total - a.total;
+    });
 }
 
 function isRoundScored(matches, round) {
@@ -315,7 +363,10 @@ app.get("/admin", (req, res) => {
     matches: state.matches.map((m) => matchView(m, teamsById, judgesById, 1)),
     judges: state.judges,
     rooms: state.rooms,
-    resetSuccess: req.query.reset === "1"
+    resetSuccess: req.query.reset === "1",
+    canConfirmRound3:
+      isRoundScored(state.matchesRound2, 2) && (state.matchesRound3 || []).length > 0,
+    round3Confirmed: state.round3Confirmed
   });
 });
 
@@ -476,6 +527,67 @@ app.post("/admin/judge/delete", (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/autofill", (req, res) => {
+  clearCompetitionData();
+
+  const roomLabels = ["101", "102", "103"];
+  for (const label of roomLabels) {
+    state.rooms.push({
+      id: state.nextRoomId++,
+      label
+    });
+  }
+
+  const demoSchools = [
+    {
+      name: "Phoenix Prep",
+      teams: ["Phoenix Prep A", "Phoenix Prep B"]
+    },
+    {
+      name: "Desert Ridge",
+      teams: ["Desert Ridge A", "Desert Ridge B"]
+    },
+    {
+      name: "Canyon View",
+      teams: ["Canyon View A", "Canyon View B"]
+    }
+  ];
+
+  for (const schoolData of demoSchools) {
+    const school = {
+      id: state.nextSchoolId++,
+      name: schoolData.name,
+      teams: []
+    };
+    for (const teamName of schoolData.teams) {
+      const existingCodes = new Set(
+        state.schools.flatMap((s) => s.teams.map((t) => t.code)).concat(
+          school.teams.map((t) => t.code)
+        )
+      );
+      school.teams.push({
+        id: state.nextTeamId++,
+        name: teamName,
+        code: generateTeamCode(existingCodes)
+      });
+    }
+    state.schools.push(school);
+  }
+
+  const judgeNames = ["Judge Alvarez", "Judge Brooks", "Judge Chen"];
+  for (const name of judgeNames) {
+    const existingPins = new Set(state.judges.map((j) => j.pin));
+    state.judges.push({
+      id: state.nextJudgeId++,
+      name,
+      pin: generateJudgePin(existingPins)
+    });
+  }
+
+  broadcastFullState();
+  res.redirect("/admin");
+});
+
 function startCompetition() {
   const teams = getTeams();
   if (teams.length < 2) {
@@ -494,6 +606,7 @@ function startCompetition() {
   state.matches = [];
   state.matchesRound2 = [];
   state.matchesRound3 = [];
+  state.round3Confirmed = false;
   state.scores = [];
   state.results = [];
 
@@ -519,12 +632,7 @@ function startCompetition() {
   }
   state.matchesRound2 = round2Matches;
 
-  broadcast("matches", state.matches);
-  broadcast("matches_round2", state.matchesRound2);
-  broadcast("matches_round3", state.matchesRound3);
-  broadcast("team_totals", getTeamTotals());
-  broadcast("scores_reset", []);
-  broadcast("results_reset", []);
+  broadcastFullState();
   return true;
 }
 
@@ -537,27 +645,15 @@ app.post("/admin/start", (req, res) => {
 });
 
 app.post("/admin/restart", (req, res) => {
-  state.schools = [];
-  state.matches = [];
-  state.matchesRound2 = [];
-  state.matchesRound3 = [];
-  state.scores = [];
-  state.results = [];
-  state.judges = [];
-  state.rooms = [];
-  state.nextSchoolId = 1;
-  state.nextTeamId = 1;
-  state.nextMatchId = 1;
-  state.nextJudgeId = 1;
-  state.nextRoomId = 1;
+  clearCompetitionData();
+  broadcastFullState();
+  res.redirect("/admin");
+});
 
-  broadcast("schools", state.schools);
-  broadcast("matches", state.matches);
-  broadcast("matches_round2", state.matchesRound2);
-  broadcast("matches_round3", state.matchesRound3);
-  broadcast("team_totals", []);
-  broadcast("scores_reset", []);
-  broadcast("results_reset", []);
+app.post("/admin/confirm-round3", (req, res) => {
+  if (isRoundScored(state.matchesRound2, 2) && (state.matchesRound3 || []).length > 0) {
+    state.round3Confirmed = true;
+  }
   res.redirect("/admin");
 });
 
@@ -575,16 +671,30 @@ app.get("/judges", (req, res) => {
   const judgesById = new Map(state.judges.map((j) => [j.id, j]));
   const assignedRound1 = state.matches.filter((m) => m.judgeId === judge.id);
   const assignedRound2 = state.matchesRound2.filter((m) => m.judgeId === judge.id);
+  const assignedRound3 = state.matchesRound3.filter((m) => m.judgeId === judge.id);
   const hasRound1Result = assignedRound1.some((m) =>
     state.results.some((r) => r.matchId === m.id && r.round === 1)
   );
-  const currentRound = hasRound1Result ? 2 : 1;
-  const assignedMatches = currentRound === 1 ? assignedRound1 : assignedRound2;
+  const hasRound2Result = assignedRound2.some((m) =>
+    state.results.some((r) => r.matchId === m.id && r.round === 2)
+  );
+  let currentRound = 1;
+  let assignedMatches = assignedRound1;
+
+  if (hasRound1Result && !hasRound2Result) {
+    currentRound = 2;
+    assignedMatches = assignedRound2;
+  } else if (hasRound1Result && hasRound2Result) {
+    currentRound = 3;
+    assignedMatches = state.round3Confirmed ? assignedRound3 : [];
+  }
+
   res.render("judges", {
     judge,
     matches: assignedMatches.map((m) => matchView(m, teamsById, judgesById, currentRound)),
     hasJudges: true,
-    currentRound
+    currentRound,
+    round3Confirmed: state.round3Confirmed
   });
 });
 

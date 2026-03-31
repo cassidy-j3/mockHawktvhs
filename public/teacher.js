@@ -155,6 +155,7 @@ function renderTeamTotals(list) {
       (t) => `
         <li>
           <strong>${t.teamLabel}</strong>
+          <span>Record: ${t.wins}-${t.losses}</span>
           <span>Total: ${t.total}</span>
         </li>`
     )
