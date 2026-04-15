@@ -83,6 +83,51 @@ function generateJudgePin(existingPins) {
   return pin;
 }
 
+function addSchool(name) {
+  const school = {
+    id: state.nextSchoolId++,
+    name,
+    teams: []
+  };
+  state.schools.push(school);
+  return school;
+}
+
+function addTeam(school, name) {
+  const existingCodes = new Set(
+    state.schools.flatMap((s) => s.teams.map((t) => t.code))
+  );
+  const code = generateTeamCode(existingCodes);
+  const team = {
+    id: state.nextTeamId++,
+    name,
+    code
+  };
+  school.teams.push(team);
+  return team;
+}
+
+function addJudge(name) {
+  const existingPins = new Set(state.judges.map((j) => j.pin));
+  const pin = generateJudgePin(existingPins);
+  const judge = {
+    id: state.nextJudgeId++,
+    name,
+    pin
+  };
+  state.judges.push(judge);
+  return judge;
+}
+
+function addRoom(label) {
+  const room = {
+    id: state.nextRoomId++,
+    label
+  };
+  state.rooms.push(room);
+  return room;
+}
+
 function shuffle(list) {
   for (let i = list.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -219,13 +264,7 @@ app.post("/admin/judge", (req, res) => {
   const { judgeName } = req.body;
   const name = (judgeName || "").trim();
   if (name) {
-    const existingPins = new Set(state.judges.map((j) => j.pin));
-    const pin = generateJudgePin(existingPins);
-    state.judges.push({
-      id: state.nextJudgeId++,
-      name,
-      pin
-    });
+    addJudge(name);
   }
   res.redirect("/admin");
 });
@@ -273,6 +312,28 @@ app.post("/admin/start", (req, res) => {
 
   broadcast("matches", state.matches);
   broadcast("scores_reset", []);
+  res.redirect("/admin");
+});
+
+app.post("/admin/autofill", (req, res) => {
+  const schoolStart = state.schools.length + 1;
+  const roomStart = state.rooms.length + 1;
+  const judgeStart = state.judges.length + 1;
+
+  for (let i = 0; i < 3; i += 1) {
+    const school = addSchool(`Autofill School ${schoolStart + i}`);
+    addTeam(school, `Team A`);
+    addTeam(school, `Team B`);
+  }
+
+  for (let i = 0; i < 3; i += 1) {
+    addJudge(`Judge ${judgeStart + i}`);
+    addRoom(`Room ${roomStart + i}`);
+  }
+
+  broadcast("schools", state.schools);
+  broadcast("rooms", state.rooms);
+  broadcast("judges", state.judges);
   res.redirect("/admin");
 });
 

@@ -40,6 +40,10 @@
 
           <section class="panel">
             <h2>Competition</h2>
+            <form id="autofillForm" method="post" action="/admin/autofill">
+              <button id="autofillButton" type="submit">Autofill</button>
+              <p id="autofillMessage" class="confirm-message"></p>
+            </form>
             <% if (teams.length < 2) { %>
               <p class="empty">Add at least two teams to start.</p>
             <% } else { %>
