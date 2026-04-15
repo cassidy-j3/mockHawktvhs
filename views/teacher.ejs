@@ -8,19 +8,24 @@
   </head>
   <body>
     <main class="page">
+      <% const safeMatches = typeof matches !== "undefined" && Array.isArray(matches) ? matches : []; %>
+      <% const safeMatchesRound2 = typeof matchesRound2 !== "undefined" && Array.isArray(matchesRound2) ? matchesRound2 : []; %>
+      <% const safeMatchesRound3 = typeof matchesRound3 !== "undefined" && Array.isArray(matchesRound3) ? matchesRound3 : []; %>
+      <% const safeResults = typeof results !== "undefined" && Array.isArray(results) ? results : []; %>
+      <% const safeTeamTotals = typeof teamTotals !== "undefined" && Array.isArray(teamTotals) ? teamTotals : []; %>
       <header class="page-header">
         <h1>Teacher Dashboard</h1>
         <a class="back" href="/">Back</a>
       </header>
 
       <section class="panel">
-        <h2>Match Status</h2>
+        <h2>Round 1</h2>
         <div id="matchDisplay">
-          <% if (matches.length === 0) { %>
+          <% if (safeMatches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
             <ul class="match-list">
-              <% matches.forEach((m) => { %>
+              <% safeMatches.forEach((m) => { %>
                 <li class="match-item">
                   <strong>Room <%= m.courtroom || "TBD" %></strong>:
                   <span><%= m.prosecutionLabel %></span>
@@ -34,19 +39,103 @@
       </section>
 
       <section class="panel">
-        <h2>Scores</h2>
-        <div id="scoresList">
-          <% if (scores.length === 0) { %>
-            <p class="empty">No scores submitted yet.</p>
+        <h2>Round 2</h2>
+        <div id="matchDisplayRound2">
+          <% if (safeMatchesRound2.length === 0) { %>
+            <p class="empty">No round 2 matches configured yet.</p>
+          <% } else { %>
+            <ul class="match-list">
+              <% safeMatchesRound2.forEach((m) => { %>
+                <li class="match-item">
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionLabel %></span>
+                  vs
+                  <span><%= m.defenseLabel %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Team Total Points</h2>
+        <div id="teamTotalsList">
+          <% if (safeTeamTotals.length === 0) { %>
+            <p class="empty">No team totals yet.</p>
           <% } else { %>
             <ul class="scores">
-              <% scores.forEach((s) => { %>
-                <% const match = matches.find((m) => m.id === s.matchId); %>
-                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel} vs ${match.defenseLabel}` : "Match TBD"; %>
+              <% safeTeamTotals.forEach((t) => { %>
                 <li>
-                  <strong><%= s.judgeName || "Judge" %></strong> - <%= matchLabel %>
-                  <span><%= s.side %> - <%= s.score %></span>
-                  <span class="note"><%= s.notes || "" %></span>
+                  <strong><%= t.teamLabel %></strong>
+                  <span>Record: <%= t.wins %>-<%= t.losses %></span>
+                  <span>Total: <%= t.total %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Round 3</h2>
+        <div id="matchDisplayRound3">
+          <% if (safeMatchesRound3.length === 0) { %>
+            <p class="empty">Round 3 pairings will appear after rounds 1 and 2 are fully scored.</p>
+          <% } else { %>
+            <ul class="match-list">
+              <% safeMatchesRound3.forEach((m) => { %>
+                <li class="match-item">
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionLabel %></span>
+                  vs
+                  <span><%= m.defenseLabel %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Round 1 Results</h2>
+        <div id="resultsListRound1">
+          <% const round1 = safeResults.filter((r) => r.round === 1); %>
+          <% if (round1.length === 0) { %>
+            <p class="empty">No round 1 results submitted yet.</p>
+          <% } else { %>
+            <ul class="scores">
+              <% round1.forEach((r) => { %>
+                <% const match = safeMatches.find((m) => m.id === r.matchId) || safeMatchesRound2.find((m) => m.id === r.matchId) || safeMatchesRound3.find((m) => m.id === r.matchId); %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel || "Team TBD"} vs ${match.defenseLabel || "Team TBD"}` : "Match TBD"; %>
+                <li>
+                  <strong><%= matchLabel %></strong>
+                  <span>Judge: <%= r.judgeName %></span>
+                  <span>Prosecution: <%= r.prosecutionTotal %> | Defense: <%= r.defenseTotal %></span>
+                  <span class="note">Winner: <%= r.winner %></span>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Round 2 Results</h2>
+        <div id="resultsListRound2">
+          <% const round2 = safeResults.filter((r) => r.round === 2); %>
+          <% if (round2.length === 0) { %>
+            <p class="empty">No round 2 results submitted yet.</p>
+          <% } else { %>
+            <ul class="scores">
+              <% round2.forEach((r) => { %>
+                <% const match = safeMatches.find((m) => m.id === r.matchId) || safeMatchesRound2.find((m) => m.id === r.matchId) || safeMatchesRound3.find((m) => m.id === r.matchId); %>
+                <% const matchLabel = match ? `Room ${match.courtroom || "TBD"}: ${match.prosecutionLabel || "Team TBD"} vs ${match.defenseLabel || "Team TBD"}` : "Match TBD"; %>
+                <li>
+                  <strong><%= matchLabel %></strong>
+                  <span>Judge: <%= r.judgeName %></span>
+                  <span>Prosecution: <%= r.prosecutionTotal %> | Defense: <%= r.defenseTotal %></span>
+                  <span class="note">Winner: <%= r.winner %></span>
                 </li>
               <% }) %>
             </ul>

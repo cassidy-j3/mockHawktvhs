@@ -31,59 +31,161 @@
       <% } else { %>
         <section class="panel">
           <h2>Matches</h2>
-          <% if (matches.length === 0) { %>
+          <p class="empty">Judge: <%= judge.name %></p>
+          <p class="empty">Round <%= currentRound || 1 %></p>
+          <% if (currentRound === 3 && !round3Confirmed) { %>
+            <p class="empty">Round 3 pairings are waiting for admin confirmation.</p>
+          <% } else if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
             <ul class="match-list">
               <% matches.forEach((m) => { %>
                 <li class="match-item">
-                  <strong>Courtroom <%= m.courtroom || "TBD" %></strong>:
-                  <span><%= m.prosecutionLabel %></span>
+                  <strong>Room <%= m.courtroom || "TBD" %></strong>:
+                  <span><%= m.prosecutionCode %></span>
                   vs
-                  <span><%= m.defenseLabel %></span>
+                  <span><%= m.defenseCode %></span>
                 </li>
               <% }) %>
             </ul>
           <% } %>
         </section>
 
-        <form class="panel" method="post" action="/judges/score">
-          <h2>Enter Score</h2>
-          <label>
-            Judge name
-            <input name="judgeName" value="<%= judge.name %>" required />
-          </label>
-          <label>
-            Match
-            <select name="matchId" required>
-              <option value="">Choose</option>
-              <% matches.forEach((m) => { %>
-                <option value="<%= m.id %>">
-                  Courtroom <%= m.courtroom || "TBD" %>:
-                  <%= m.prosecutionLabel %> vs <%= m.defenseLabel %>
-                </option>
-              <% }) %>
-            </select>
-          </label>
-          <label>
-            Side
-            <select name="side" required>
-              <option value="">Choose</option>
-              <option value="Prosecution">Prosecution</option>
-              <option value="Defense">Defense</option>
-            </select>
-          </label>
-          <label>
-            Score
-            <input name="score" type="number" min="0" max="100" required />
-          </label>
-          <label>
-            Notes
-            <textarea name="notes" rows="3"></textarea>
-          </label>
-          <button type="submit">Submit Score</button>
-        </form>
+        <section class="panel">
+          <h2>Scoring Guide</h2>
+          <p>Using a scale of 1 to 10, rate the P and D in the categories below. Do not use fractional points.</p>
+          <p>Scale: 1 2 3 4 5 6 7 8 9 10</p>
+          <p>Not Effective | Fair | Good | Excellent | Outstanding</p>
+          <p>There can be absolutely no ties.</p>
+        </section>
+
+        <section
+          class="score-grid"
+          data-judge-id="<%= judge.id %>"
+          data-match-id="<%= matches.length ? matches[0].id : "" %>"
+          data-round="<%= currentRound || 1 %>"
+        >
+          <div class="panel" data-score-section="prosecution">
+            <h2>Prosecution / Plaintiff</h2>
+            <div class="score-text">
+              <div class="score-line">
+                <span>Opening Statement</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Closing Argument</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line score-subtotal">
+                <span>Subtotal</span>
+                <span class="score-total" data-score-total>0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" data-score-section="defense">
+            <h2>Defense</h2>
+            <div class="score-text">
+              <div class="score-line">
+                <span>Opening Statement</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Cross Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>First Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Second Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Direct Examination</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Third Witness: Witness Presentation</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line">
+                <span>Closing Argument</span>
+                <input class="score-input" type="number" min="1" max="10" />
+              </div>
+              <div class="score-line score-subtotal">
+                <span>Subtotal</span>
+                <span class="score-total" data-score-total>0</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <button id="autofillScoresButton" type="button">Autofill Scores</button>
+          <p id="autofillScoresMessage" class="confirm-message"></p>
+        </section>
+
+        <section class="panel">
+          <button id="submitScoresButton" type="button">Submit Scores</button>
+          <p id="submitScoresMessage" class="confirm-message"></p>
+        </section>
+
       <% } %>
     </main>
+    <script src="/judges.js"></script>
   </body>
 </html>

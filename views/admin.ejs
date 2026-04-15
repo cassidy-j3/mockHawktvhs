@@ -12,7 +12,11 @@
         <h1>Admin</h1>
         <a class="back" href="/">Back</a>
       </header>
-
+      <% if (resetSuccess) { %>
+        <section class="panel">
+          <p class="confirm-message">Competition reset. All data cleared.</p>
+        </section>
+      <% } %>
       <div class="admin-layout">
         <aside class="admin-left">
           <section class="panel">
@@ -41,7 +45,7 @@
           <section class="panel">
             <h2>Competition</h2>
             <form id="autofillForm" method="post" action="/admin/autofill">
-              <button id="autofillButton" type="submit">Autofill</button>
+              <button id="autofillButton" type="submit">Autofill Demo Setup</button>
               <p id="autofillMessage" class="confirm-message"></p>
             </form>
             <% if (teams.length < 2) { %>
@@ -50,6 +54,18 @@
               <form id="startCompetitionForm" method="post" action="/admin/start">
                 <button id="startCompetitionButton" type="submit">Start Competition</button>
                 <p id="startCompetitionMessage" class="confirm-message"></p>
+              </form>
+              <% if (canConfirmRound3 && !round3Confirmed) { %>
+                <form id="confirmRound3Form" method="post" action="/admin/confirm-round3">
+                  <button id="confirmRound3Button" type="submit">Confirm Round 3 Pairings</button>
+                  <p id="confirmRound3Message" class="confirm-message"></p>
+                </form>
+              <% } else if (round3Confirmed) { %>
+                <p class="empty">Round 3 pairings confirmed.</p>
+              <% } %>
+              <form id="restartCompetitionForm" method="post" action="/admin/restart">
+                <button id="restartCompetitionButton" type="submit">Restart Competition</button>
+                <p id="restartCompetitionMessage" class="confirm-message"></p>
               </form>
             <% } %>
           </section>
@@ -97,7 +113,13 @@
             <ul class="school-list">
               <% schools.forEach((s) => { %>
                 <li class="school-item">
-                  <strong><%= s.name %></strong>
+                  <div class="list-row">
+                    <strong><%= s.name %></strong>
+                    <form method="post" action="/admin/school/delete">
+                      <input type="hidden" name="schoolId" value="<%= s.id %>" />
+                      <button type="submit" class="delete-button">Delete</button>
+                    </form>
+                  </div>
                   <% if (s.teams.length === 0) { %>
                     <p class="empty">No teams yet.</p>
                   <% } else { %>
