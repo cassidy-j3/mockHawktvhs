@@ -63,6 +63,14 @@
               <% } else if (round3Confirmed) { %>
                 <p class="empty">Round 3 pairings confirmed.</p>
               <% } %>
+              <% if (canConfirmRound4 && !round4Confirmed) { %>
+                <form id="confirmRound4Form" method="post" action="/admin/confirm-round4">
+                  <button id="confirmRound4Button" type="submit">Confirm Round 4 Pairings</button>
+                  <p id="confirmRound4Message" class="confirm-message"></p>
+                </form>
+              <% } else if (round4Confirmed) { %>
+                <p class="empty">Round 4 pairings confirmed.</p>
+              <% } %>
               <form id="restartCompetitionForm" method="post" action="/admin/restart">
                 <button id="restartCompetitionButton" type="submit">Restart Competition</button>
                 <p id="restartCompetitionMessage" class="confirm-message"></p>

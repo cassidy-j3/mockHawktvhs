@@ -22,6 +22,8 @@ const state = {
   matchesRound2: [],
   matchesRound3: [],
   round3Confirmed: false,
+  matchesRound4: [],
+  round4Confirmed: false,
   scores: [],
   results: [],
   judges: [],
@@ -225,6 +227,8 @@ function clearCompetitionData() {
   state.matchesRound2 = [];
   state.matchesRound3 = [];
   state.round3Confirmed = false;
+  state.matchesRound4 = [];
+  state.round4Confirmed = false;
   state.scores = [];
   state.results = [];
   state.judges = [];
@@ -241,13 +245,19 @@ function broadcastFullState() {
   broadcast("matches", state.matches);
   broadcast("matches_round2", state.matchesRound2);
   broadcast("matches_round3", state.matchesRound3);
+  broadcast("matches_round4", state.matchesRound4);
   broadcast("team_totals", getTeamTotals());
   broadcast("scores_reset", []);
   broadcast("results_reset", []);
 }
 
 function findMatchById(matchId) {
-  const lists = [state.matches, state.matchesRound2, state.matchesRound3 || []];
+  const lists = [
+    state.matches,
+    state.matchesRound2,
+    state.matchesRound3 || [],
+    state.matchesRound4 || []
+  ];
   for (const list of lists) {
     const match = list.find((m) => m.id === matchId);
     if (match) return match;
@@ -320,26 +330,18 @@ function isRoundScored(matches, round) {
   );
 }
 
-function maybeGenerateRound3() {
-  if ((state.matchesRound3 || []).length > 0) return;
-  if (!isRoundScored(state.matches, 1)) return;
-  if (!isRoundScored(state.matchesRound2, 2)) return;
-
+function buildPowerRoundMatches(disallowedPairs) {
   const totals = getTeamTotals();
   const orderedTeamIds = totals.map((t) => t.teamId);
-  if (orderedTeamIds.length < 2) return;
+  if (orderedTeamIds.length < 2) return [];
 
-  const disallowedPairs = new Set([
-    ...buildPairSet(state.matches),
-    ...buildPairSet(state.matchesRound2)
-  ]);
   const rooms = [...state.rooms];
   if (rooms.length) shuffle(rooms);
   const judgeIds = state.judges.map((j) => j.id);
   if (judgeIds.length) shuffle(judgeIds);
 
   const used = new Set();
-  const round3 = [];
+  const matches = [];
   let roomIndex = 0;
 
   for (let i = 0; i < orderedTeamIds.length; i += 1) {
@@ -367,12 +369,12 @@ function maybeGenerateRound3() {
     const room =
       rooms.length > 0
         ? rooms[roomIndex % rooms.length].label
-        : String(round3.length + 1);
+        : String(matches.length + 1);
     const judgeId =
       judgeIds.length > 0 ? judgeIds[roomIndex % judgeIds.length] : null;
     roomIndex += 1;
 
-    round3.push({
+    matches.push({
       id: state.nextMatchId++,
       courtroom: room,
       prosecutionTeamId: a,
@@ -381,8 +383,41 @@ function maybeGenerateRound3() {
     });
   }
 
+  return matches;
+}
+
+function maybeGenerateRound3() {
+  if ((state.matchesRound3 || []).length > 0) return;
+  if (!isRoundScored(state.matches, 1)) return;
+  if (!isRoundScored(state.matchesRound2, 2)) return;
+
+  const round3 = buildPowerRoundMatches(
+    new Set([
+      ...buildPairSet(state.matches),
+      ...buildPairSet(state.matchesRound2)
+    ])
+  );
+
+  if (!round3.length) return;
   state.matchesRound3 = round3;
   broadcast("matches_round3", state.matchesRound3);
+}
+
+function maybeGenerateRound4() {
+  if ((state.matchesRound4 || []).length > 0) return;
+  if (!isRoundScored(state.matchesRound3 || [], 3)) return;
+
+  const round4 = buildPowerRoundMatches(
+    new Set([
+      ...buildPairSet(state.matches),
+      ...buildPairSet(state.matchesRound2),
+      ...buildPairSet(state.matchesRound3 || [])
+    ])
+  );
+
+  if (!round4.length) return;
+  state.matchesRound4 = round4;
+  broadcast("matches_round4", state.matchesRound4);
 }
 
 const sseClients = new Set();
@@ -411,7 +446,10 @@ app.get("/admin", (req, res) => {
     resetSuccess: req.query.reset === "1",
     canConfirmRound3:
       isRoundScored(state.matchesRound2, 2) && (state.matchesRound3 || []).length > 0,
-    round3Confirmed: state.round3Confirmed
+    round3Confirmed: state.round3Confirmed,
+    canConfirmRound4:
+      isRoundScored(state.matchesRound3 || [], 3) && (state.matchesRound4 || []).length > 0,
+    round4Confirmed: state.round4Confirmed
   });
 });
 
@@ -645,7 +683,9 @@ function startCompetition() {
   state.matches = [];
   state.matchesRound2 = [];
   state.matchesRound3 = [];
+  state.matchesRound4 = [];
   state.round3Confirmed = false;
+  state.round4Confirmed = false;
   state.scores = [];
   state.results = [];
 
@@ -696,6 +736,13 @@ app.post("/admin/confirm-round3", (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/confirm-round4", (req, res) => {
+  if (isRoundScored(state.matchesRound3 || [], 3) && (state.matchesRound4 || []).length > 0) {
+    state.round4Confirmed = true;
+  }
+  res.redirect("/admin");
+});
+
 app.post("/admin/autofill", (req, res) => {
   const schoolStart = state.schools.length + 1;
   const roomStart = state.rooms.length + 1;
@@ -733,11 +780,15 @@ app.get("/judges", (req, res) => {
   const assignedRound1 = state.matches.filter((m) => m.judgeId === judge.id);
   const assignedRound2 = state.matchesRound2.filter((m) => m.judgeId === judge.id);
   const assignedRound3 = state.matchesRound3.filter((m) => m.judgeId === judge.id);
+  const assignedRound4 = state.matchesRound4.filter((m) => m.judgeId === judge.id);
   const hasRound1Result = assignedRound1.some((m) =>
     state.results.some((r) => r.matchId === m.id && r.round === 1)
   );
   const hasRound2Result = assignedRound2.some((m) =>
     state.results.some((r) => r.matchId === m.id && r.round === 2)
+  );
+  const hasRound3Result = assignedRound3.some((m) =>
+    state.results.some((r) => r.matchId === m.id && r.round === 3)
   );
   let currentRound = 1;
   let assignedMatches = assignedRound1;
@@ -745,9 +796,12 @@ app.get("/judges", (req, res) => {
   if (hasRound1Result && !hasRound2Result) {
     currentRound = 2;
     assignedMatches = assignedRound2;
-  } else if (hasRound1Result && hasRound2Result) {
+  } else if (hasRound1Result && hasRound2Result && !hasRound3Result) {
     currentRound = 3;
     assignedMatches = state.round3Confirmed ? assignedRound3 : [];
+  } else if (hasRound1Result && hasRound2Result && hasRound3Result) {
+    currentRound = 4;
+    assignedMatches = state.round4Confirmed ? assignedRound4 : [];
   }
 
   res.render("judges", {
@@ -755,7 +809,8 @@ app.get("/judges", (req, res) => {
     matches: assignedMatches.map((m) => matchView(m, teamsById, judgesById, currentRound)),
     hasJudges: true,
     currentRound,
-    round3Confirmed: state.round3Confirmed
+    round3Confirmed: state.round3Confirmed,
+    round4Confirmed: state.round4Confirmed
   });
 });
 
@@ -796,11 +851,15 @@ app.post("/judges/submit", (req, res) => {
   const { matchId, judgeId, prosecutionTotal, defenseTotal, round } = req.body;
   const match = state.matches.find((m) => m.id === Number(matchId));
   const matchRound2 = state.matchesRound2.find((m) => m.id === Number(matchId));
-  const targetMatch = match || matchRound2;
-  const roundNumber = Number(round) || (match ? 1 : 2);
+  const matchRound3 = state.matchesRound3.find((m) => m.id === Number(matchId));
+  const matchRound4 = state.matchesRound4.find((m) => m.id === Number(matchId));
+  const targetMatch = match || matchRound2 || matchRound3 || matchRound4;
+  const roundNumber = Number(round) || (match ? 1 : matchRound2 ? 2 : matchRound3 ? 3 : 4);
   const judge = state.judges.find((j) => j.id === Number(judgeId));
   const pTotal = Number(prosecutionTotal);
   const dTotal = Number(defenseTotal);
+  const teams = getTeams();
+  const teamsById = new Map(teams.map((t) => [t.id, t]));
 
   if (!targetMatch || !judge || targetMatch.judgeId !== judge.id) {
     res.status(400).json({ error: "Invalid match or judge." });
@@ -816,6 +875,8 @@ app.post("/judges/submit", (req, res) => {
   }
 
   const winner = pTotal > dTotal ? "Prosecution" : "Defense";
+  const prosecutionTeam = teamsById.get(targetMatch.prosecutionTeamId);
+  const defenseTeam = teamsById.get(targetMatch.defenseTeamId);
   const existingIndex = state.results.findIndex((r) => r.matchId === targetMatch.id);
   const result = {
     matchId: targetMatch.id,
@@ -823,7 +884,9 @@ app.post("/judges/submit", (req, res) => {
     judgeName: judge.name,
     prosecutionTotal: pTotal,
     defenseTotal: dTotal,
-    winner
+    winner,
+    prosecutionLabel: prosecutionTeam ? teamLabel(prosecutionTeam) : "",
+    defenseLabel: defenseTeam ? teamLabel(defenseTeam) : ""
   };
 
   if (existingIndex >= 0) {
@@ -833,6 +896,7 @@ app.post("/judges/submit", (req, res) => {
   }
 
   maybeGenerateRound3();
+  maybeGenerateRound4();
   broadcast("results", result);
   broadcast("team_totals", getTeamTotals());
   res.json({ ok: true });
@@ -851,6 +915,9 @@ app.get("/teacher", (req, res) => {
     matchesRound3: (state.matchesRound3 || []).map((m) =>
       matchView(m, teamsById, judgesById, 3)
     ),
+    matchesRound4: (state.matchesRound4 || []).map((m) =>
+      matchView(m, teamsById, judgesById, 4)
+    ),
     teamTotals: getTeamTotals(),
     scores: state.scores,
     results: state.results
@@ -868,6 +935,7 @@ app.get("/events", (req, res) => {
   res.write(`event: matches\ndata: ${JSON.stringify(state.matches)}\n\n`);
   res.write(`event: matches_round2\ndata: ${JSON.stringify(state.matchesRound2)}\n\n`);
   res.write(`event: matches_round3\ndata: ${JSON.stringify(state.matchesRound3 || [])}\n\n`);
+  res.write(`event: matches_round4\ndata: ${JSON.stringify(state.matchesRound4 || [])}\n\n`);
   res.write(`event: team_totals\ndata: ${JSON.stringify(getTeamTotals())}\n\n`);
   for (const score of state.scores) {
     res.write(`event: score\ndata: ${JSON.stringify(score)}\n\n`);

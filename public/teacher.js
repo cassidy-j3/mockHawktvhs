@@ -1,6 +1,7 @@
 const matchDisplay = document.getElementById("matchDisplay");
 const matchDisplayRound2 = document.getElementById("matchDisplayRound2");
 const matchDisplayRound3 = document.getElementById("matchDisplayRound3");
+const matchDisplayRound4 = document.getElementById("matchDisplayRound4");
 const source = new EventSource("/events");
 
 function getTeams(schools) {
@@ -46,6 +47,7 @@ let schools = [];
 let matches = [];
 let matchesRound2 = [];
 let matchesRound3 = [];
+let matchesRound4 = [];
 let teamTotals = [];
 const scores = [];
 const results = [];
@@ -56,11 +58,13 @@ function renderAll() {
   const matchesById = new Map(matches.map((m) => [String(m.id), m]));
   const matchesRound2ById = new Map(matchesRound2.map((m) => [String(m.id), m]));
   const matchesRound3ById = new Map(matchesRound3.map((m) => [String(m.id), m]));
+  const matchesRound4ById = new Map(matchesRound4.map((m) => [String(m.id), m]));
   renderMatches(matches, teamsById, matchDisplay);
   renderMatches(matchesRound2, teamsById, matchDisplayRound2);
   renderMatches(matchesRound3, teamsById, matchDisplayRound3);
+  renderMatches(matchesRound4, teamsById, matchDisplayRound4);
   renderTeamTotals(teamTotals);
-  renderResults(results, matchesById, matchesRound2ById, matchesRound3ById);
+  renderResults(results, matchesById, matchesRound2ById, matchesRound3ById, matchesRound4ById);
 }
 
 source.addEventListener("schools", (event) => {
@@ -80,6 +84,11 @@ source.addEventListener("matches_round2", (event) => {
 
 source.addEventListener("matches_round3", (event) => {
   matchesRound3 = JSON.parse(event.data);
+  renderAll();
+});
+
+source.addEventListener("matches_round4", (event) => {
+  matchesRound4 = JSON.parse(event.data);
   renderAll();
 });
 
@@ -103,13 +112,17 @@ source.addEventListener("results_reset", () => {
   renderAll();
 });
 
-function renderResults(list, matchesById, matchesRound2ById, matchesRound3ById) {
+function renderResults(list, matchesById, matchesRound2ById, matchesRound3ById, matchesRound4ById) {
   const resultsListRound1 = document.getElementById("resultsListRound1");
   const resultsListRound2 = document.getElementById("resultsListRound2");
-  if (!resultsListRound1 || !resultsListRound2) return;
+  const resultsListRound3 = document.getElementById("resultsListRound3");
+  const resultsListRound4 = document.getElementById("resultsListRound4");
+  if (!resultsListRound1 || !resultsListRound2 || !resultsListRound3 || !resultsListRound4) return;
 
   const round1 = list.filter((r) => r.round === 1);
   const round2 = list.filter((r) => r.round === 2);
+  const round3 = list.filter((r) => r.round === 3);
+  const round4 = list.filter((r) => r.round === 4);
 
   function renderInto(target, items) {
     if (!items.length) {
@@ -121,12 +134,15 @@ function renderResults(list, matchesById, matchesRound2ById, matchesRound3ById) 
         const match =
           matchesById.get(String(r.matchId)) ||
           matchesRound2ById.get(String(r.matchId)) ||
-          matchesRound3ById.get(String(r.matchId));
+          matchesRound3ById.get(String(r.matchId)) ||
+          matchesRound4ById.get(String(r.matchId));
         const label = match
           ? `Room ${match.courtroom || "TBD"}: ${
-              match.prosecutionLabel || "Team TBD"
-            } vs ${match.defenseLabel || "Team TBD"}`
-          : "Match TBD";
+              match.prosecutionLabel || r.prosecutionLabel || "Team TBD"
+            } vs ${match.defenseLabel || r.defenseLabel || "Team TBD"}`
+          : `${r.prosecutionLabel || "Team TBD"} vs ${
+              r.defenseLabel || "Team TBD"
+            }`;
         return `
         <li>
           <strong>${label}</strong>
@@ -141,6 +157,8 @@ function renderResults(list, matchesById, matchesRound2ById, matchesRound3ById) 
 
   renderInto(resultsListRound1, round1);
   renderInto(resultsListRound2, round2);
+  renderInto(resultsListRound3, round3);
+  renderInto(resultsListRound4, round4);
 }
 
 function renderTeamTotals(list) {

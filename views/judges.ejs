@@ -35,6 +35,8 @@
           <p class="empty">Round <%= currentRound || 1 %></p>
           <% if (currentRound === 3 && !round3Confirmed) { %>
             <p class="empty">Round 3 pairings are waiting for admin confirmation.</p>
+          <% } else if (currentRound === 4 && !round4Confirmed) { %>
+            <p class="empty">Round 4 pairings are waiting for admin confirmation.</p>
           <% } else if (matches.length === 0) { %>
             <p class="empty">No matches configured yet.</p>
           <% } else { %>
