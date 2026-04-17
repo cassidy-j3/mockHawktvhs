@@ -162,6 +162,15 @@ function buildPairSet(matches) {
   return set;
 }
 
+function findMatchForPair(matches, a, b) {
+  const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
+  return matches.find((match) => {
+    if (!match.defenseTeamId) return false;
+    const pairKey = `${Math.min(match.prosecutionTeamId, match.defenseTeamId)}-${Math.max(match.prosecutionTeamId, match.defenseTeamId)}`;
+    return pairKey === key;
+  });
+}
+
 function generateRoundMatches(teamIds, rooms, judgeIds, disallowedPairs) {
   const maxAttempts = 1000;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -316,9 +325,9 @@ function getTeamTotals() {
       };
     })
     .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
       if (b.wins !== a.wins) return b.wins - a.wins;
-      if (a.losses !== b.losses) return a.losses - b.losses;
-      return b.total - a.total;
+      return a.losses - b.losses;
     });
 }
 
@@ -334,37 +343,46 @@ function buildPowerRoundMatches(disallowedPairs) {
   const totals = getTeamTotals();
   const orderedTeamIds = totals.map((t) => t.teamId);
   if (orderedTeamIds.length < 2) return [];
+  const teamsById = new Map(getTeams().map((t) => [t.id, t]));
+
+  function sameSchool(teamAId, teamBId) {
+    const teamA = teamsById.get(teamAId);
+    const teamB = teamsById.get(teamBId);
+    return !!teamA && !!teamB && teamA.schoolName === teamB.schoolName;
+  }
 
   const rooms = [...state.rooms];
   if (rooms.length) shuffle(rooms);
   const judgeIds = state.judges.map((j) => j.id);
   if (judgeIds.length) shuffle(judgeIds);
 
-  const used = new Set();
   const matches = [];
   let roomIndex = 0;
 
-  for (let i = 0; i < orderedTeamIds.length; i += 1) {
+  for (let i = 0; i < orderedTeamIds.length; i += 2) {
     const a = orderedTeamIds[i];
-    if (used.has(a)) continue;
+    let b = orderedTeamIds[i + 1] || null;
 
-    let opponentIndex = -1;
-    for (let j = i + 1; j < orderedTeamIds.length; j += 1) {
-      const b = orderedTeamIds[j];
-      if (used.has(b)) continue;
-      const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
-      if (!disallowedPairs.has(key)) {
-        opponentIndex = j;
+    if (b && sameSchool(a, b)) {
+      for (let j = i + 2; j < orderedTeamIds.length; j += 1) {
+        const candidate = orderedTeamIds[j];
+        if (!candidate || sameSchool(a, candidate)) continue;
+        const candidatePair = `${Math.min(a, candidate)}-${Math.max(a, candidate)}`;
+        if (disallowedPairs.has(candidatePair)) continue;
+        orderedTeamIds[i + 1] = candidate;
+        orderedTeamIds[j] = b;
+        b = candidate;
         break;
-      }
-      if (opponentIndex === -1) {
-        opponentIndex = j;
       }
     }
 
-    used.add(a);
-    const b = opponentIndex >= 0 ? orderedTeamIds[opponentIndex] : null;
-    if (b) used.add(b);
+    const previousMatch = b ? findMatchForPair([...state.matches, ...state.matchesRound2, ...(state.matchesRound3 || [])], a, b) : null;
+    let prosecutionTeamId = a;
+    let defenseTeamId = b;
+    if (previousMatch && previousMatch.prosecutionTeamId === a && previousMatch.defenseTeamId === b) {
+      prosecutionTeamId = b;
+      defenseTeamId = a;
+    }
 
     const room =
       rooms.length > 0
@@ -377,8 +395,8 @@ function buildPowerRoundMatches(disallowedPairs) {
     matches.push({
       id: state.nextMatchId++,
       courtroom: room,
-      prosecutionTeamId: a,
-      defenseTeamId: b,
+      prosecutionTeamId,
+      defenseTeamId,
       judgeId
     });
   }
