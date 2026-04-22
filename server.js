@@ -325,9 +325,9 @@ function getTeamTotals() {
       };
     })
     .sort((a, b) => {
-      if (b.total !== a.total) return b.total - a.total;
       if (b.wins !== a.wins) return b.wins - a.wins;
-      return a.losses - b.losses;
+      if (a.losses !== b.losses) return a.losses - b.losses;
+      return b.total - a.total;
     });
 }
 
@@ -766,13 +766,14 @@ app.post("/admin/autofill", (req, res) => {
   const roomStart = state.rooms.length + 1;
   const judgeStart = state.judges.length + 1;
 
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 6; i += 1) {
     const school = addSchool(`Autofill School ${schoolStart + i}`);
-    addTeam(school, `Team A`);
-    addTeam(school, `Team B`);
+    addTeam(school, "Team A");
+    addTeam(school, "Team B");
+    addTeam(school, "Team C");
   }
 
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 9; i += 1) {
     addJudge(`Judge ${judgeStart + i}`);
     addRoom(`Room ${roomStart + i}`);
   }
