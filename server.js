@@ -625,7 +625,7 @@ app.post("/admin/judge/delete", (req, res) => {
 app.post("/admin/autofill", (req, res) => {
   clearCompetitionData();
 
-  const roomLabels = ["101", "102", "103"];
+  const roomLabels = ["101", "102", "103", "104", "105", "106", "107", "108", "109"];
   for (const label of roomLabels) {
     state.rooms.push({
       id: state.nextRoomId++,
@@ -634,27 +634,21 @@ app.post("/admin/autofill", (req, res) => {
   }
 
   const demoSchools = [
-    {
-      name: "Phoenix Prep",
-      teams: ["Phoenix Prep A", "Phoenix Prep B"]
-    },
-    {
-      name: "Desert Ridge",
-      teams: ["Desert Ridge A", "Desert Ridge B"]
-    },
-    {
-      name: "Canyon View",
-      teams: ["Canyon View A", "Canyon View B"]
-    }
+    "Phoenix Prep",
+    "Desert Ridge",
+    "Canyon View",
+    "Horizon Academy",
+    "Mesa Charter",
+    "Summit Ridge"
   ];
 
-  for (const schoolData of demoSchools) {
+  for (const schoolName of demoSchools) {
     const school = {
       id: state.nextSchoolId++,
-      name: schoolData.name,
+      name: schoolName,
       teams: []
     };
-    for (const teamName of schoolData.teams) {
+    for (const teamSuffix of ["A", "B", "C"]) {
       const existingCodes = new Set(
         state.schools.flatMap((s) => s.teams.map((t) => t.code)).concat(
           school.teams.map((t) => t.code)
@@ -662,14 +656,24 @@ app.post("/admin/autofill", (req, res) => {
       );
       school.teams.push({
         id: state.nextTeamId++,
-        name: teamName,
+        name: `${schoolName} ${teamSuffix}`,
         code: generateTeamCode(existingCodes)
       });
     }
     state.schools.push(school);
   }
 
-  const judgeNames = ["Judge Alvarez", "Judge Brooks", "Judge Chen"];
+  const judgeNames = [
+    "Judge Alvarez",
+    "Judge Brooks",
+    "Judge Chen",
+    "Judge Diaz",
+    "Judge Evans",
+    "Judge Foster",
+    "Judge Garcia",
+    "Judge Harris",
+    "Judge Ito"
+  ];
   for (const name of judgeNames) {
     const existingPins = new Set(state.judges.map((j) => j.pin));
     state.judges.push({
@@ -758,29 +762,6 @@ app.post("/admin/confirm-round4", (req, res) => {
   if (isRoundScored(state.matchesRound3 || [], 3) && (state.matchesRound4 || []).length > 0) {
     state.round4Confirmed = true;
   }
-  res.redirect("/admin");
-});
-
-app.post("/admin/autofill", (req, res) => {
-  const schoolStart = state.schools.length + 1;
-  const roomStart = state.rooms.length + 1;
-  const judgeStart = state.judges.length + 1;
-
-  for (let i = 0; i < 6; i += 1) {
-    const school = addSchool(`Autofill School ${schoolStart + i}`);
-    addTeam(school, "Team A");
-    addTeam(school, "Team B");
-    addTeam(school, "Team C");
-  }
-
-  for (let i = 0; i < 9; i += 1) {
-    addJudge(`Judge ${judgeStart + i}`);
-    addRoom(`Room ${roomStart + i}`);
-  }
-
-  broadcast("schools", state.schools);
-  broadcast("rooms", state.rooms);
-  broadcast("judges", state.judges);
   res.redirect("/admin");
 });
 
